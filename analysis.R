@@ -13,6 +13,7 @@ library(svglite) #for saving figures as .svg
 library(broom) #for curve fitting when analysing WEOC quality
 library(scales) # displays 100,000 as 100,000, not as 1e5
 library(DHARMa) #to help interpret GLMs
+
 # renv, already installed in RStudio, used for version control 
 
 #### load the master data file ----
@@ -1091,8 +1092,7 @@ simulationOutput <- simulateResiduals(fittedModel = glm)
 plot(simulationOutput)
 
 
-#two-way ANOVA.  We sqrt transform the data in order to pass Shapiro Wilk.  Though the results of the ANOVA
-#are unchanged
+#two-way ANOVA.  
 anova <- aov(all_data$`TNb Concentration (mg N g-1)` ~ all_data$Habitat * all_data$Vegetation)
 summary(anova)
 #check homogeneity of variance
@@ -1544,13 +1544,7 @@ print(cld)
 
 #### pH vs Al linear modelling ----
 
-#linear model of the relationship
-model <- lm(all_data$`Al (mg g-1)` ~ all_data$pH)
-summary(model)
-
 #plot the relationship
-#plot(result$pH, result$Al_mgperg)
-
 plot <- ggplot(all_data, aes(x = pH, y = `Al (mg g-1)`)) +
   geom_point(color = "black", size = 2) + # Add points
   geom_smooth(method = "lm", color = "red", se = TRUE) + # Add regression line
@@ -1586,17 +1580,16 @@ plot <- ggplot(all_data, aes(x = pH, y = `Al (mg g-1)`)) +
 
 show(plot)
 
-
-
 ggsave(path = "Figures", paste0(Sys.Date(), "_Al-vs-pH.svg"), plot)
 
-#should we use + or * after results$ph? * if there is an interaction with Habitat and Vegetation, + if not
-anova <- aov(result$Al_mgperg ~ result$pH + result$Habitat.x / factor(result$Vegetation.x))
-summary(anova)
+#linear model of the relationship
+model <- lm(all_data$`Al (mg g-1)` ~ all_data$pH)
+summary(model)
+#out model seems to fit well
+simulationOutput <- simulateResiduals(fittedModel = model)
+plot(simulationOutput)
 
 
-
- #NEEDS STATS!
 #### Soil cation summary statistics ----
 
 
@@ -1614,6 +1607,7 @@ summary_stats_ions %>%
   readr::write_csv(file = fs::path("Data", "5) Soil cation summary statistics.csv")) #NEEDS FIXING #NEEDS FIXING
 
 #ALL OF THE BELOW HAVE YET TO HAVE NEW STATS DONE ON THEM!
+
 
 #### Microinvertebrate abundances to a standard depth ----
 
@@ -1694,16 +1688,34 @@ figure
 ggsave(path = "Figures", paste0(Sys.Date(), '_morphotype-abundances_black-green.svg'), figure)
 
 
-#nested anova
-anova <- aov(d_abundance$individualsperm2to10cmdepth ~ d_abundance$Habitat / factor(d_abundance$Vegetation))
+#run the GLM
+glm <- glm(all_data$`Individuals per m2 to 10 cm depth` ~ all_data$Habitat*all_data$Vegetation)
+summary(glm)
+#out model seems to fit well
+simulationOutput <- simulateResiduals(fittedModel = glm)
+plot(simulationOutput)
+
+#two-way ANOVA.  
+anova <- aov(all_data$`Individuals per m2 to 10 cm depth` ~ as.factor(all_data$Habitat) * as.factor(all_data$Vegetation))
 summary(anova)
+#check homogeneity of variance
+plot(anova, 1)
+#levene test.  if p value < 0.05, there is evidence to suggest that the variance across groups is statistically significantly different.
+leveneTest(all_data$`Individuals per m2 to 10 cm depth` ~ all_data$Habitat * all_data$Vegetation)
+#check normality.  
+plot(anova, 2)
+#conduct shapiro-wilk test on ANOVA residules
+#extract the residuals
+aov_residuals <- residuals(object = anova)
+#run shapiro-wilk test.  if p > 0.05 the data is normal
+shapiro.test(x = aov_residuals)
+
 #tukey's test to identify significant interactions
 tukey <- TukeyHSD(anova)
 print(tukey)
 #compact letter display
 cld <- multcompLetters4(anova, tukey)
 print(cld)
-
 
 
 
@@ -1816,12 +1828,30 @@ show(all_bxp)
 #save our plot
 ggsave(path = "Figures", paste0(Sys.Date(), '_alpha-diversity_black-green.svg'), width = 7, height = 5, all_bxp)
 
+#Morphotype richness
 
+#run the GLM
+glm <- glm(all_data$`Morphotype Richness` ~ all_data$Habitat*all_data$Vegetation)
+summary(glm)
+#out model seems to fit well
+simulationOutput <- simulateResiduals(fittedModel = glm)
+plot(simulationOutput)
 
-
-#nested anova - richness
-anova <- aov(d$richness ~ d$Habitat / factor(d$Vegetation))
+#two-way ANOVA.  
+anova <- aov(all_data$`Morphotype Richness` ~ all_data$Habitat * all_data$Vegetation)
 summary(anova)
+#check homogeneity of variance
+plot(anova, 1)
+#levene test.  if p value < 0.05, there is evidence to suggest that the variance across groups is statistically significantly different.
+leveneTest(all_data$`Morphotype Richness` ~ all_data$Habitat * all_data$Vegetation)
+#check normality.  
+plot(anova, 2)
+#conduct shapiro-wilk test on ANOVA residules
+#extract the residuals
+aov_residuals <- residuals(object = anova)
+#run shapiro-wilk test.  if p > 0.05 the data is normal
+shapiro.test(x = aov_residuals)
+
 #tukey's test to identify significant interactions
 tukey <- TukeyHSD(anova)
 print(tukey)
@@ -1829,9 +1859,31 @@ print(tukey)
 cld <- multcompLetters4(anova, tukey)
 print(cld)
 
-#nested anova - eveness
-anova <- aov(d$evenness ~ d$Habitat / factor(d$Vegetation))
+
+#Morphotype evenness
+
+#run the GLM
+glm <- glm(all_data$`Morphotype Pielou's Evenness` ~ all_data$Habitat*all_data$Vegetation)
+summary(glm)
+#out model seems to fit well
+simulationOutput <- simulateResiduals(fittedModel = glm)
+plot(simulationOutput)
+
+#two-way ANOVA.  
+anova <- aov(all_data$`Morphotype Pielou's Evenness` ~ all_data$Habitat * all_data$Vegetation)
 summary(anova)
+#check homogeneity of variance
+plot(anova, 1)
+#levene test.  if p value < 0.05, there is evidence to suggest that the variance across groups is statistically significantly different.
+leveneTest(all_data$`Morphotype Pielou's Evenness` ~ all_data$Habitat * all_data$Vegetation)
+#check normality.  
+plot(anova, 2)
+#conduct shapiro-wilk test on ANOVA residules
+#extract the residuals
+aov_residuals <- residuals(object = anova)
+#run shapiro-wilk test.  if p > 0.05 the data is normal
+shapiro.test(x = aov_residuals)
+
 #tukey's test to identify significant interactions
 tukey <- TukeyHSD(anova)
 print(tukey)
@@ -1839,9 +1891,31 @@ print(tukey)
 cld <- multcompLetters4(anova, tukey)
 print(cld)
 
-#nested anova - shannon
-anova <- aov(d$shannon ~ d$Habitat / factor(d$Vegetation))
+
+#Morphotype Shannon
+
+#run the GLM
+glm <- glm(all_data$`Morphotype Shannon` ~ all_data$Habitat*all_data$Vegetation)
+summary(glm)
+#out model seems to fit well
+simulationOutput <- simulateResiduals(fittedModel = glm)
+plot(simulationOutput)
+
+#two-way ANOVA.  
+anova <- aov(all_data$`Morphotype Shannon` ~ all_data$Habitat * all_data$Vegetation)
 summary(anova)
+#check homogeneity of variance
+plot(anova, 1)
+#levene test.  if p value < 0.05, there is evidence to suggest that the variance across groups is statistically significantly different.
+leveneTest(all_data$`Morphotype Shannon` ~ all_data$Habitat * all_data$Vegetation)
+#check normality.  
+plot(anova, 2)
+#conduct shapiro-wilk test on ANOVA residules
+#extract the residuals
+aov_residuals <- residuals(object = anova)
+#run shapiro-wilk test.  if p > 0.05 the data is normal
+shapiro.test(x = aov_residuals)
+
 #tukey's test to identify significant interactions
 tukey <- TukeyHSD(anova)
 print(tukey)
@@ -1849,16 +1923,36 @@ print(tukey)
 cld <- multcompLetters4(anova, tukey)
 print(cld)
 
-#nested anova - simpson
-anova <- aov(d$simpson ~ d$Habitat / factor(d$Vegetation))
+#Morphotype Simpson
+
+#run the GLM
+glm <- glm(all_data$`Morphotype Simpson` ~ all_data$Habitat*all_data$Vegetation)
+summary(glm)
+#out model seems to fit well
+simulationOutput <- simulateResiduals(fittedModel = glm)
+plot(simulationOutput)
+
+#two-way ANOVA.  
+anova <- aov(all_data$`Morphotype Simpson` ~ all_data$Habitat * all_data$Vegetation)
 summary(anova)
+#check homogeneity of variance
+plot(anova, 1)
+#levene test.  if p value < 0.05, there is evidence to suggest that the variance across groups is statistically significantly different.
+leveneTest(all_data$`Morphotype Simpson` ~ all_data$Habitat * all_data$Vegetation)
+#check normality.  
+plot(anova, 2)
+#conduct shapiro-wilk test on ANOVA residules
+#extract the residuals
+aov_residuals <- residuals(object = anova)
+#run shapiro-wilk test.  if p > 0.05 the data is normal
+shapiro.test(x = aov_residuals)
+
 #tukey's test to identify significant interactions
 tukey <- TukeyHSD(anova)
 print(tukey)
 #compact letter display
 cld <- multcompLetters4(anova, tukey)
 print(cld)
-
 
 
 
@@ -2223,18 +2317,112 @@ show(nem_bxp)
 ggsave(path = "Figures", paste0(Sys.Date(), "_nematode-abundances_black-green.svg"), nem_bxp)
 
 
-#nested anova
-anova <- aov(all_data$`Nematodes per g dry soil` ~ all_data$Habitat / factor(all_data$Vegetation))
+
+#run the GLM
+glm <- glm(sqrt(all_data$`Nematodes per g dry soil`) ~ all_data$Habitat*all_data$Vegetation)
+summary(glm)
+#out model seems to fit well
+simulationOutput <- simulateResiduals(fittedModel = glm)
+plot(simulationOutput)
+
+#two-way ANOVA.  
+anova <- aov(sqrt(all_data$`Nematodes per g dry soil`) ~ all_data$Habitat * all_data$Vegetation)
 summary(anova)
+#check homogeneity of variance
+plot(anova, 1)
+#levene test.  if p value < 0.05, there is evidence to suggest that the variance across groups is statistically significantly different.
+leveneTest(sqrt(all_data$`Nematodes per g dry soil`) ~ all_data$Habitat * all_data$Vegetation)
+#check normality.  
+plot(anova, 2)
+#conduct shapiro-wilk test on ANOVA residules
+#extract the residuals
+aov_residuals <- residuals(object = anova)
+#run shapiro-wilk test.  if p > 0.05 the data is normal
+shapiro.test(x = aov_residuals)
+
 #tukey's test to identify significant interactions
 tukey <- TukeyHSD(anova)
 print(tukey)
-
 #compact letter display
 cld <- multcompLetters4(anova, tukey)
 print(cld)
 
+
+
+
+
+#### Nematodes vs water moisture linear modelling ----
+
 #plot nematode abundance vs soil moisture. Do with updated moisture numbers (% fresh soil mass, not graviemtric)
+
+#linear model of the relationship
+model <- glm(all_data$`Nematodes per g dry soil` ~ all_data$`Water content (% of wet soil mass)`)
+summary(model)
+#out model seems to fit well
+simulationOutput <- simulateResiduals(fittedModel = model)
+plot(simulationOutput)
+
+#plot the relationship
+plot <- ggplot(all_data, aes(x = `Water content (% of wet soil mass)`, y = `Nematodes per g dry soil`)) +
+  geom_point(color = "black", size = 2) + # Add points
+  geom_smooth(method = "lm", color = "red", se = TRUE) + # Add regression line
+  # Line of best fit
+  annotate("text", x = 50, y = max(all_data$`Water content (% of wet soil mass)`), 
+           label = paste("y =", 
+                         round(coef(model)[2], 2), "x", 
+                         round(coef(model)[1], 2), 
+                         "\nR² =", 
+                         round(summary(model)$r.squared, 2)), 
+           hjust = 0, vjust = 1, size = 4, color = "black") +
+  labs(x = "Water Content (%)", y = "Nematodes per 100 g dry soil") +  theme(
+    
+    # Remove panel border
+    panel.border = element_blank(),  
+    # Remove panel grid lines
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    # Remove panel background
+    panel.background = element_blank(),
+    # Add axis line
+    axis.line = element_line(colour = "black", linewidth = 0.5),
+    #change colour and thickness of axis ticks
+    axis.ticks = element_line(colour = "black", linewidth = 0.5),
+    #change axis labels colour
+    axis.title.y = element_text(colour = "black"),
+    #change tick labels colour
+    axis.text.y = element_text(colour = "black"),
+  ) 
+
+show(plot)
+
+ggsave(path = "Figures", paste0(Sys.Date(), "_nematodes-vs-soil-water-content.svg"), plot)
+
+
+#linear models not a good fit for comparsiong nematodes vs soil water.  Try GAM instead
+library(mgcv) #for GAMs
+
+
+#model bracken absent and present separately
+# Subset the data based on 'Bracken' variable
+bracken_absent_data <- all_data[all_data$Vegetation == "Bracken Absent", ]
+bracken_present_data <- all_data[all_data$Vegetation == "Bracken Present", ]
+#bracken absent model
+model_ba <- glm(bracken_absent_data$`Nematodes per g dry soil` ~ bracken_absent_data$`Water content (% of wet soil mass)`)
+summary(model_ba)
+#out model seems to fit well
+simulationOutput <- simulateResiduals(fittedModel = model_ba)
+plot(simulationOutput)
+
+
+#bracken absent model
+model_bp <- glm(bracken_present_data$`Nematodes per g dry soil` ~ bracken_present_data$`Water content (% of wet soil mass)`)
+summary(model_bp)
+#out model seems to fit well
+simulationOutput <- simulateResiduals(fittedModel = model_bp)
+plot(simulationOutput)
+
+
+library(Hmisc) #needed for the regression to run, splitting bracken absent from bracken present
 
 p <- ggplot(all_data,aes(`Water content (% of wet soil mass)`, `Nematodes per g dry soil`, colour = Vegetation)) +
   stat_summary(fun.data= mean_cl_normal) + 
@@ -2260,10 +2448,8 @@ p <- ggplot(all_data,aes(`Water content (% of wet soil mass)`, `Nematodes per g 
                       ) 
 
 show(p)
-#nested anova
-anova <- aov(d$Nematodesper100gdrysoil ~ d$`Water content as percentage wet soil mass` + factor(d$Vegetation))
-summary(anova)
 
+ggsave(path = "Figures", paste0(Sys.Date(), "_nematodes-vs-soil-water-content_bracken-absent-vs-present.svg"), p)
 
 
 
