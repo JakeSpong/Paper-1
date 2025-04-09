@@ -375,7 +375,7 @@ treat=c(rep("Grassland Bracken Present",5),rep("Grassland Bracken Absent",5), re
 colors =c(rep("#999999",5),rep("#E69F00",5), rep("#56B4E9",5),rep("#009E73",5), rep("#CC79A7", 5), rep("#0072B2", 5)) 
 #point shapes
 pchs<- c(rep(15, 5), rep(0, 5), rep(16, 5), rep(1, 5), rep(17, 5), rep(2, 5)) 
-text(-0.5,2.1, paste("Stress = ", round(example_NMDS$stress, 3)))
+text(-1.8,1.3, paste("Stress = ", round(example_NMDS$stress, 3)))
 
 for(i in unique(treat)) {
   #we have added an if statement so we can chose which points and ellipses to plot at a time e.g. i == "Grassland Bracken".  If we want to plot all ellipses simultaneously, set i == i
@@ -403,17 +403,23 @@ legend(-1.7,0.9, legend=c("Grassland Bracken Present", "Grassland Bracken Absent
 #data frame containing the independent variables (Habitat, Vegetation) we shall be using in our PERMANOVA
 idvs <- all_data[,(3:4)]
 #run the permanova
-veg_permanova <- adonis2(veg_spe ~ Habitat*Vegetation, idvs, permutations = 999, method = "bray")
+veg_permanova <- adonis2(veg_spe ~ Habitat*Vegetation, idvs, permutations = 999, method = "bray", by = "terms")
 veg_permanova
 #veg_permanova indicates that Habitat and Vegetation have significant effects, with habitat explainng 26.7% of the variation and Vegetation explaining 36.0 %
 
-#run an anosim - be sure to run with grouping = d$Habitat
-m_com <- as.matrix(veg_spe)
-ano = anosim(m_com, grouping = all_data$Habitat, distance = "bray", permutations = 9999)
+#run an anosim - when grouping by habitat
+ano = anosim(as.matrix(veg_spe), grouping = all_data$Habitat, permutations = 9999, distance = "bray")
 #check output of anosim
 ano
+plot(ano)
+#run an anosim - when grouping by vegetation
+ano = anosim(as.matrix(veg_spe), grouping = all_data$Vegetation, permutations = 9999, distance = "bray")
+#check output of anosim
+ano
+plot(ano)
 
- #NEEDS STATS!
+
+
 #### WEOC quality data processing ----
 d <- readr::read_csv(
   here::here("Data", "2) 2023-12-13_WEOC-Quality-Microplate-Reader_Run-2-diluted-10-fold.csv")) 
@@ -1541,7 +1547,6 @@ print(cld)
 
 
 
-
 #### pH vs Al linear modelling ----
 
 #plot the relationship
@@ -2024,25 +2029,25 @@ legend(-1.7,0.9, legend=c("Grassland Bracken Present", "Grassland Bracken Absent
 
 # do PERMANOVA analysis
 
+
 #data frame containing the independent variables (Habitat, Vegetation) we shall be using in our PERMANOVA
-meso_idvs <- d[,(3:4)]
-meso_permanova <- adonis2(spe ~ Habitat*Vegetation, meso_idvs, permutations = 999, method = "bray")
-meso_permanova
-#meso_permanova says habitat and habitat:vegetation interaction are significant (though habitat only explains 16.1% of variation whilst habitat:vegetation explains 8.6% of the variation)
+idvs <- all_data[,(3:4)]
+#run the permanova
+morph_permanova <- adonis2(spe ~ Habitat*Vegetation, idvs, permutations = 999, method = "bray", by = "terms")
+morph_permanova
 
 
 #run an ANOSIM. The ANOSIM test is similar to an ANOVA hypothesis test, but it uses a dissimilarity matrix as input instead of raw data. It is also non-parametric, meaning it doesn’t assume much about your data (like normal distribution etc), so it’s a good bet for often-skewed microbial abundance data. As a non-parametric test, ANOSIM uses ranked dissimilarities instead of actual distances, and in this way it’s a very nice complement to an NMDS plot. The main point of the ANOSIM test is to determine if the differences between two or more groups are significant.
-dis <- vegdist(spe, method="bray", diag=FALSE, upper=FALSE)
-#fun heatmap to visualise the dissimilarity matrix
-heatmap(as.matrix(dis))
-#convert dissimilarity dataframe to a matrix
-m_dis <- as.matrix(dis)
-ano = anosim(m_dis, d$Habitat, distance = "bray", permutations = 9999)
+#run an anosim - when grouping by habitat
+ano = anosim(as.matrix(spe), grouping = all_data$Habitat, permutations = 9999, distance = "bray")
+#check output of anosim
+ano
+plot(ano)
+#run an anosim - when grouping by vegetation
+ano = anosim(as.matrix(spe), grouping = all_data$Vegetation, permutations = 9999, distance = "bray")
 # When interpreting these results you want to look at the ANOSIM statistic R and the Significance values. A Significance value less than 0.05 is generally considered to be statistically significant, and means the null hypothesis can be rejected. “The ANOSIM statistic “R” compares the mean of ranked dissimilarities between groups to the mean of ranked dissimilarities within groups. An R value close to “1.0” suggests dissimilarity between groups while an R value close to “0” suggests an even distribution of high and low ranks within and between groups” (GUSTAME). In other words, the higher the R value, the more dissimilar your groups are in terms of microbial community composition.
 ano
-
-
-
+plot(ano)
 
 #### NMDS analysis of week 1 + 2 mesofauna abundance data ----
 
@@ -2089,26 +2094,24 @@ for(i in unique(treat)) {
 #save the file using Export -> Save As Image -> Width = 655, Height = 500 
 
 # do PERMANOVA analysis
-
 #data frame containing the independent variables (Habitat, Vegetation) we shall be using in our PERMANOVA
-meso_idvs <- all_data[,(3:4)]
-meso_permanova <- adonis2(spe ~ Habitat*Vegetation, meso_idvs, permutations = 999, method = "bray")
-meso_permanova
-#meso_permanova says habitat and habitat:vegetation interaction are significant (though habitat only explains 16.1% of variation whilst habitat:vegetation explains 8.6% of the variation)
-
+idvs <- all_data[,(3:4)]
+#run the permanova
+morph_permanova <- adonis2(spe ~ Habitat*Vegetation, idvs, permutations = 999, method = "bray", by = "terms")
+morph_permanova
 
 
 #run an ANOSIM. The ANOSIM test is similar to an ANOVA hypothesis test, but it uses a dissimilarity matrix as input instead of raw data. It is also non-parametric, meaning it doesn’t assume much about your data (like normal distribution etc), so it’s a good bet for often-skewed microbial abundance data. As a non-parametric test, ANOSIM uses ranked dissimilarities instead of actual distances, and in this way it’s a very nice complement to an NMDS plot. The main point of the ANOSIM test is to determine if the differences between two or more groups are significant.
-dis <- vegdist(spe, method="bray", diag=FALSE, upper=FALSE)
-#fun heatmap to visualise the dissimilarity matrix
-heatmap(as.matrix(dis))
-#convert dissimilarity dataframe to a matrix
-m_dis <- as.matrix(dis)
-ano = anosim(m_dis, all_data$Habitat, distance = "bray", permutations = 9999)
+#run an anosim - when grouping by habitat
+ano = anosim(as.matrix(spe), grouping = all_data$Habitat, permutations = 9999, distance = "bray")
+#check output of anosim
+ano
+plot(ano)
+#run an anosim - when grouping by vegetation
+ano = anosim(as.matrix(spe), grouping = all_data$Vegetation, permutations = 9999, distance = "bray")
 # When interpreting these results you want to look at the ANOSIM statistic R and the Significance values. A Significance value less than 0.05 is generally considered to be statistically significant, and means the null hypothesis can be rejected. “The ANOSIM statistic “R” compares the mean of ranked dissimilarities between groups to the mean of ranked dissimilarities within groups. An R value close to “1.0” suggests dissimilarity between groups while an R value close to “0” suggests an even distribution of high and low ranks within and between groups” (GUSTAME). In other words, the higher the R value, the more dissimilar your groups are in terms of microbial community composition.
 ano
-
-
+plot(ano)
 
 
 
@@ -2356,7 +2359,7 @@ print(cld)
 #plot nematode abundance vs soil moisture. Do with updated moisture numbers (% fresh soil mass, not graviemtric)
 
 #linear model of the relationship
-model <- glm(all_data$`Nematodes per g dry soil` ~ all_data$`Water content (% of wet soil mass)`)
+model <- lm(all_data$`Nematodes per g dry soil` ~ all_data$`Water content (% of wet soil mass)`)
 summary(model)
 #out model seems to fit well
 simulationOutput <- simulateResiduals(fittedModel = model)
@@ -2374,7 +2377,7 @@ plot <- ggplot(all_data, aes(x = `Water content (% of wet soil mass)`, y = `Nema
                          "\nR² =", 
                          round(summary(model)$r.squared, 2)), 
            hjust = 0, vjust = 1, size = 4, color = "black") +
-  labs(x = "Water Content (%)", y = "Nematodes per 100 g dry soil") +  theme(
+  labs(x = "Water Content (%)", y = "Nematodes per g dry soil") +  theme(
     
     # Remove panel border
     panel.border = element_blank(),  
@@ -2398,28 +2401,130 @@ show(plot)
 ggsave(path = "Figures", paste0(Sys.Date(), "_nematodes-vs-soil-water-content.svg"), plot)
 
 
-#linear models not a good fit for comparsiong nematodes vs soil water.  Try GAM instead
-library(mgcv) #for GAMs
 
 
-#model bracken absent and present separately
-# Subset the data based on 'Bracken' variable
+#subset bracken absent and present separately
 bracken_absent_data <- all_data[all_data$Vegetation == "Bracken Absent", ]
 bracken_present_data <- all_data[all_data$Vegetation == "Bracken Present", ]
+#linear models not a good fit for comparsiong nematodes vs soil water.  Try GAM instead
+
 #bracken absent model
-model_ba <- glm(bracken_absent_data$`Nematodes per g dry soil` ~ bracken_absent_data$`Water content (% of wet soil mass)`)
+model_ba <- lm(bracken_absent_data$`Nematodes per g dry soil` ~ bracken_absent_data$`Water content (% of wet soil mass)`)
 summary(model_ba)
 #out model seems to fit well
 simulationOutput <- simulateResiduals(fittedModel = model_ba)
 plot(simulationOutput)
+#plot the relationship
+plot <- ggplot(bracken_absent_data, aes(x = `Water content (% of wet soil mass)`, y = `Nematodes per g dry soil`)) +
+  geom_point(color = "black", size = 2) + # Add points
+  geom_smooth(method = "lm", color = "red", se = TRUE) + # Add regression line
+  # Line of best fit
+  annotate("text", x = 50, y = max(bracken_absent_data$`Water content (% of wet soil mass)`), 
+           label = paste("y =", 
+                         round(coef(model_ba)[2], 2), "x", 
+                         round(coef(model_ba)[1], 2), 
+                         "\nR² =", 
+                         round(summary(model_ba)$r.squared, 2)), 
+           hjust = 0, vjust = 1, size = 4, color = "black") +
+  labs(x = "Water Content (%)", y = "Nematodes per g dry soil") +  theme(
+    
+    # Remove panel border
+    panel.border = element_blank(),  
+    # Remove panel grid lines
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    # Remove panel background
+    panel.background = element_blank(),
+    # Add axis line
+    axis.line = element_line(colour = "black", linewidth = 0.5),
+    #change colour and thickness of axis ticks
+    axis.ticks = element_line(colour = "black", linewidth = 0.5),
+    #change axis labels colour
+    axis.title.y = element_text(colour = "black"),
+    #change tick labels colour
+    axis.text.y = element_text(colour = "black"),
+  ) 
+
+show(plot)
+
+
 
 
 #bracken absent model
-model_bp <- glm(bracken_present_data$`Nematodes per g dry soil` ~ bracken_present_data$`Water content (% of wet soil mass)`)
+model_bp <- lm(bracken_present_data$`Nematodes per g dry soil` ~ bracken_present_data$`Water content (% of wet soil mass)`)
 summary(model_bp)
 #out model seems to fit well
 simulationOutput <- simulateResiduals(fittedModel = model_bp)
 plot(simulationOutput)
+#plot the relationship
+plot <- ggplot(bracken_present_data, aes(x = `Water content (% of wet soil mass)`, y = `Nematodes per g dry soil`)) +
+  geom_point(color = "black", size = 2) + # Add points
+  geom_smooth(method = "lm", color = "red", se = TRUE) + # Add regression line
+  # Line of best fit
+  annotate("text", x = 50, y = max(bracken_present_data$`Water content (% of wet soil mass)`), 
+           label = paste("y =", 
+                         round(coef(model_bp)[2], 2), "x", 
+                         round(coef(model_bp)[1], 2), 
+                         "\nR² =", 
+                         round(summary(model_bp)$r.squared, 2)), 
+           hjust = 0, vjust = 1, size = 4, color = "black") +
+  labs(x = "Water Content (%)", y = "Nematodes per g dry soil") +  theme(
+    
+    # Remove panel border
+    panel.border = element_blank(),  
+    # Remove panel grid lines
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    # Remove panel background
+    panel.background = element_blank(),
+    # Add axis line
+    axis.line = element_line(colour = "black", linewidth = 0.5),
+    #change colour and thickness of axis ticks
+    axis.ticks = element_line(colour = "black", linewidth = 0.5),
+    #change axis labels colour
+    axis.title.y = element_text(colour = "black"),
+    #change tick labels colour
+    axis.text.y = element_text(colour = "black"),
+  ) 
+
+show(plot)
+
+
+
+
+
+#plot the relationship
+plot <- ggplot(all_data, aes(x = `Water content (% of wet soil mass)`, y = `Nematodes per g dry soil`)) +
+  geom_point(color = "black", size = 2) + # Add points
+  geom_smooth(method = "lm", color = "red", se = TRUE) + # Add regression line
+  # Line of best fit
+  annotate("text", x = 50, y = max(all_data$`Water content (% of wet soil mass)`), 
+           label = paste("y =", 
+                         round(coef(model)[2], 2), "x", 
+                         round(coef(model)[1], 2), 
+                         "\nR² =", 
+                         round(summary(model)$r.squared, 2)), 
+           hjust = 0, vjust = 1, size = 4, color = "black") +
+  labs(x = "Water Content (%)", y = "Nematodes per g dry soil") +  theme(
+    
+    # Remove panel border
+    panel.border = element_blank(),  
+    # Remove panel grid lines
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    # Remove panel background
+    panel.background = element_blank(),
+    # Add axis line
+    axis.line = element_line(colour = "black", linewidth = 0.5),
+    #change colour and thickness of axis ticks
+    axis.ticks = element_line(colour = "black", linewidth = 0.5),
+    #change axis labels colour
+    axis.title.y = element_text(colour = "black"),
+    #change tick labels colour
+    axis.text.y = element_text(colour = "black"),
+  ) 
+
+show(plot)
 
 
 library(Hmisc) #needed for the regression to run, splitting bracken absent from bracken present
@@ -2428,7 +2533,25 @@ p <- ggplot(all_data,aes(`Water content (% of wet soil mass)`, `Nematodes per g 
   stat_summary(fun.data= mean_cl_normal) + 
   geom_smooth(method='lm')  +
   scale_colour_manual(name = "Vegetation", 
-                      values = c("black", "limegreen")) + labs(x = "Water Content (%)", y = "Nematodes per 100 g dry soil") +  theme(
+                      values = c("black", "limegreen")) + labs(x = "Water Content (%)", y = "Nematodes per g dry soil") +  
+  # Line of best fit for bracken present
+  annotate("text", x = 50, y = max(all_data$`Water content (% of wet soil mass)` - 100), 
+           label = paste("y =", 
+                         round(coef(model_bp)[2], 2), "x", 
+                         round(coef(model_bp)[1], 2), 
+                         "\nR² =", 
+                         round(summary(model_bp)$r.squared, 2)), 
+           hjust = 0, vjust = 1, size = 4, color = "limegreen") +
+  # Line of best fit for bracken absent
+  annotate("text", x = 50, y = max(all_data$`Water content (% of wet soil mass)`+ 30), 
+           label = paste("y =", 
+                         round(coef(model_ba)[2], 2), "x", 
+                         round(coef(model_ba)[1], 2), 
+                         "\nR² =", 
+                         round(summary(model_ba)$r.squared, 2)), 
+           hjust = 0, vjust = 1, size = 4, color = "black") +
+  
+  theme(
                         
                         # Remove panel border
                         panel.border = element_blank(),  
@@ -2445,11 +2568,12 @@ p <- ggplot(all_data,aes(`Water content (% of wet soil mass)`, `Nematodes per g 
                         axis.title.y = element_text(colour = "black"),
                         #change tick labels colour
                         axis.text.y = element_text(colour = "black"),
+                        legend.title = element_blank()
                       ) 
 
 show(p)
 
-ggsave(path = "Figures", paste0(Sys.Date(), "_nematodes-vs-soil-water-content_bracken-absent-vs-present.svg"), p)
+ggsave(path = "Figures", paste0(Sys.Date(), "_nematodes-vs-soil-water-content_bracken-absent-vs-present.svg"), p, width = 7, heigh = 5, dpi = 300)
 
 
 
@@ -2522,7 +2646,7 @@ moist$RichnessGained <- moist$Richness_2 - moist$Richness_1
 moist$IndividualsGained <- moist$Individuals_2 - moist$Individuals_1
 
 
-#is there a relationship between soil moisture and addition morphospecies found in week 2?
+#is there a difference ebtween soil moisture and addition morphospecies found in week 2?
 anv <- aov(moist$RichnessGained ~ moist$`Water content (% of wet soil mass)` + moist$Habitat/moist$Vegetation)
 summary(anv)
 
