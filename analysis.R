@@ -1413,11 +1413,11 @@ plot(simulationOutput)
 
 
 #two-way ANOVA.  We sqrt transform the data in order to pass Shapiro Wilk.  
-anova <- aov(sqrt(all_data$`Ca (mg g-1)`) ~ all_data$Habitat * all_data$Vegetation)
+anova <- aov(all_data$`Ca (mg g-1)` ~ all_data$Habitat * all_data$Vegetation)
 #check homogeneity of variance
 plot(anova, 1)
 #levene test.  if p value < 0.05, there is evidence to suggest that the variance across groups is statistically significantly different.
-leveneTest(sqrt(all_data$`Ca (mg g-1)`) ~ all_data$Habitat * all_data$Vegetation)
+leveneTest(all_data$`Ca (mg g-1)` ~ all_data$Habitat * all_data$Vegetation)
 #check normality.  
 plot(anova, 2)
 #conduct shapiro-wilk test on ANOVA residules
@@ -1540,12 +1540,12 @@ simulationOutput <- simulateResiduals(fittedModel = glm)
 plot(simulationOutput)
 
 
-#two-way ANOVA.  We sqrt transform the data in order to pass Levene 
-anova <- aov(sqrt(all_data$`Al (mg g-1)`) ~ all_data$Habitat * all_data$Vegetation)
+#two-way ANOVA.  We sqrt transform the data in order to pass Levene .  If we don't, we get p = 0.05 for habitat, so not significant anyway
+anova <- aov(all_data$`Al (mg g-1)` ~ all_data$Habitat * all_data$Vegetation)
 #check homogeneity of variance
 plot(anova, 1)
 #levene test.  if p value < 0.05, there is evidence to suggest that the variance across groups is statistically significantly different.
-leveneTest(sqrt(all_data$`Al (mg g-1)`) ~ all_data$Habitat * all_data$Vegetation)
+leveneTest(all_data$`Al (mg g-1)` ~ all_data$Habitat * all_data$Vegetation)
 #check normality.  
 plot(anova, 2)
 #conduct shapiro-wilk test on ANOVA residules
@@ -1747,8 +1747,10 @@ print(tukey)
 cld <- multcompLetters4(anova, tukey)
 print(cld)
 
-
-
+#figure +
+ # annotate("text", x = 1.5, y = 300, label = "a   b    ab", color = "black") 
+#save our plot
+#ggsave(path = "Figures", paste0(Sys.Date(), '_cld-letters-for-inkscape.pdf'), plot = last_plot(), width = 5, height = 4, dpi = 300, device = "pdf")
 
 #### Alpha diversity (Richess, evenness, Shannon and Simpson Diversity) of mesofauna groups ----
 
