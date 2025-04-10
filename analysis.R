@@ -476,102 +476,6 @@ d_stnd$`Standardized Absorbance (L mg-1 cm-1)` <- d_stnd$Absorbance/d_stnd$`NPOC
 write.csv(d_stnd, "Data//4) Standardised Processed WEOC Absorbance Data.csv", row.names =FALSE)
 
 
-#### WEOC quality analysis - alpha parameter calculation and plotting ----
-#quality needs to be analysed; easiest thing to do is: check data for nice curve, fit 2 component exponential decay curve through data.  Get slope from this (spectral slope), and the beta paramter from this slope
-#read in the processed, STANDARDISED absorbance data
-d <- readr::read_csv(
-  here::here("Data", "4) Standardised Processed WEOC Absorbance Data.csv")) 
-#eliminate all absorbance values above 600 nm
-d <- d %>% filter(`Wavelength (nm)` <= 600)
-
-# Fit a two-component exponential decay curve through the data for all our curves
-fitted <- d %>%
-  nest(data = -`Sample ID`) %>%
-  mutate(
-    fit = map(data, ~nls(`Standardized Absorbance (L mg-1 cm-1)` ~ SSasymp(`Wavelength (nm)`, yf, y0, log_alpha), data = .)),
-    tidied = map(fit, tidy),
-    augmented = map(fit, augment),
-  )
-# Produce a table of fit parameters: y0, yf, alpha
-table <- fitted %>% 
-  unnest(tidied) %>% 
-  select(`Sample ID`, term, estimate) %>% 
-  spread(term, estimate) %>% 
-  mutate(alpha = exp(log_alpha))
-#display table of fit parameters
-table
-
-#plot each absorbance curve along with the line of best fit
-augmented <- fitted %>% 
-  unnest(augmented)
-qplot(`Wavelength (nm)`, `Standardized Absorbance (L mg-1 cm-1)`, data = augmented, geom = 'point', colour = `Sample ID`) +
-  geom_line(aes(y=.fitted))
-
-#now we have extracted the paramters of our lines of best fit, add the descriptors
-table$Habitat <- c(rep("Grassland",10), rep("Heathland",10),rep("Woodland",10))
-table$Vegetation <- c(rep("Bracken Present",5), rep("Bracken Absent", 5),rep("Bracken Present",5), rep("Bracken Absent", 5),rep("Bracken Present",5), rep("Bracken Absent", 5))
-
-#boxplot the alpha, which describes the curve ie how quicky we go from low wavelength (high mass C compounds) to high wavelength (low mass C compounds)
-alpha_bxp <- ggboxplot(table, x = "Habitat", y = 'alpha', color = "Vegetation", palette = c("black", "limegreen"), lwd = 0.75)  +
-  labs(y = "DOM fitted curve alpha parameter") + theme(
-    #remove x axis label
-    axis.title.x=element_blank(),
-    # Remove panel border
-    panel.border = element_blank(),  
-    # Remove panel grid lines
-    panel.grid.major = element_blank(),
-    panel.grid.minor = element_blank(),
-    # Remove panel background
-    panel.background = element_blank(),
-    # Add axis line
-    axis.line = element_line(colour = "black", linewidth = 0.5),
-    #change colour and thickness of axis ticks
-    axis.ticks = element_line(colour = "black", linewidth = 0.5),
-    #change axis labels colour
-    axis.title.y = element_text(colour = "black"),
-    #change tick labels colour
-    axis.text.y = element_text(colour = "black"),
-  ) 
-show(alpha_bxp)
-#save our plot
-ggsave(path = "Figures", paste0(Sys.Date(), '_standardised_DOM-curve-alpha-paramter_black-green.svg'), alpha_bxp)
-
-
-
-
-#Veg richness
-
-#run the GLM
-glm <- glm(table$alpha ~ table$Habitat * table$Vegetation)
-summary(glm)
-#out model seems to fit well
-simulationOutput <- simulateResiduals(fittedModel = glm)
-plot(simulationOutput)
-
-
-#two-way ANOVA
-anova <- aov(table$alpha ~ table$Habitat * table$Vegetation)
-summary(anova)
-#check homogeneity of variance
-plot(anova, 1)
-#levene test.  if p value < 0.05, there is evidence to suggest that the variance across groups is statistically significantly different.
-leveneTest(table$alpha ~ table$Habitat * table$Vegetation)
-#check normality.  
-plot(anova, 2)
-#conduct shapiro-wilk test on ANOVA residules
-#extract the residuals
-aov_residuals <- residuals(object = anova)
-#run shapiro-wilk test.  if p > 0.05 the data is normal
-shapiro.test(x = aov_residuals)
-
-#tukey's test to identify significant interactions
-tukey <- TukeyHSD(anova)
-print(tukey)
-#compact letter display
-cld <- multcompLetters4(anova, tukey)
-print(cld)
-
-
 #### WEOC Wavelength of Interest boxplots ----
 #read in the processed, STANDARDISED absorbance data
 d <- readr::read_csv(
@@ -932,14 +836,115 @@ cld <- multcompLetters4(anova, tukey)
 print(cld)
 
 
-#### Total soil nitrogen boxplot ----
+#### Panel figure of DOM alpha parameter, total soil nitrogen, WEN, C:N ratio ----
+
+#WEOC quality analysis - alpha parameter calculation and plotting 
+#quality needs to be analysed; easiest thing to do is: check data for nice curve, fit 2 component exponential decay curve through data.  Get slope from this (spectral slope), and the alpha paramter from this slope
+#read in the processed, STANDARDISED absorbance data
+d <- readr::read_csv(
+  here::here("Data", "4) Standardised Processed WEOC Absorbance Data.csv")) 
+#eliminate all absorbance values above 600 nm
+d <- d %>% filter(`Wavelength (nm)` <= 600)
+
+# Fit a two-component exponential decay curve through the data for all our curves
+fitted <- d %>%
+  nest(data = -`Sample ID`) %>%
+  mutate(
+    fit = map(data, ~nls(`Standardized Absorbance (L mg-1 cm-1)` ~ SSasymp(`Wavelength (nm)`, yf, y0, log_alpha), data = .)),
+    tidied = map(fit, tidy),
+    augmented = map(fit, augment),
+  )
+# Produce a table of fit parameters: y0, yf, alpha
+table <- fitted %>% 
+  unnest(tidied) %>% 
+  select(`Sample ID`, term, estimate) %>% 
+  spread(term, estimate) %>% 
+  mutate(alpha = exp(log_alpha))
+#display table of fit parameters
+table
+
+#plot each absorbance curve along with the line of best fit
+augmented <- fitted %>% 
+  unnest(augmented)
+qplot(`Wavelength (nm)`, `Standardized Absorbance (L mg-1 cm-1)`, data = augmented, geom = 'point', colour = `Sample ID`) +
+  geom_line(aes(y=.fitted))
+
+#now we have extracted the paramters of our lines of best fit, add the descriptors
+table$Habitat <- c(rep("Grassland",10), rep("Heathland",10),rep("Woodland",10))
+table$Vegetation <- c(rep("Bracken Present",5), rep("Bracken Absent", 5),rep("Bracken Present",5), rep("Bracken Absent", 5),rep("Bracken Present",5), rep("Bracken Absent", 5))
+
+#boxplot the alpha, which describes the curve ie how quicky we go from low wavelength (high mass C compounds) to high wavelength (low mass C compounds)
+alpha_bxp <- ggboxplot(table, x = "Habitat", y = 'alpha', color = "Vegetation", palette = c("black", "limegreen"), lwd = 0.75)  +
+  labs(y = "DOM fitted curve alpha parameter") + theme(
+    #remove x axis label, ticks, labels
+    axis.title.x=element_blank(),
+    axis.text.x=element_blank(),
+    axis.ticks.x=element_blank(),
+    # Remove panel border
+    panel.border = element_blank(),  
+    # Remove panel grid lines
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    # Remove panel background
+    panel.background = element_blank(),
+    # Add axis line
+    axis.line = element_line(colour = "black", linewidth = 0.5),
+    #change colour and thickness of axis ticks
+    axis.ticks = element_line(colour = "black", linewidth = 0.5),
+    #change axis labels colour
+    axis.title.y = element_text(colour = "black"),
+    #change tick labels colour
+    axis.text.y = element_text(colour = "black"),
+    legend.title = element_blank()
+  ) 
+show(alpha_bxp)
+#save our plot
+#ggsave(path = "Figures", paste0(Sys.Date(), '_standardised_DOM-curve-alpha-paramter_black-green.svg'), alpha_bxp)
+
+
+
+
+#run the GLM
+glm <- glm(table$alpha ~ table$Habitat * table$Vegetation)
+summary(glm)
+#out model seems to fit well
+simulationOutput <- simulateResiduals(fittedModel = glm)
+plot(simulationOutput)
+
+
+#two-way ANOVA
+anova <- aov(table$alpha ~ table$Habitat * table$Vegetation)
+summary(anova)
+#check homogeneity of variance
+plot(anova, 1)
+#levene test.  if p value < 0.05, there is evidence to suggest that the variance across groups is statistically significantly different.
+leveneTest(table$alpha ~ table$Habitat * table$Vegetation)
+#check normality.  
+plot(anova, 2)
+#conduct shapiro-wilk test on ANOVA residules
+#extract the residuals
+aov_residuals <- residuals(object = anova)
+#run shapiro-wilk test.  if p > 0.05 the data is normal
+shapiro.test(x = aov_residuals)
+
+#tukey's test to identify significant interactions
+tukey <- TukeyHSD(anova)
+print(tukey)
+#compact letter display
+cld <- multcompLetters4(anova, tukey)
+print(cld)
+
+
 
 #plot nitrogen
 tsn_bxp <- ggboxplot(all_data, x = "Habitat", y = '`Total Nitrogen (g kg-1)`', color = "Vegetation", palette = c("black", "limegreen"), lwd = 0.75)  +
   labs(x = "Habitat x Vegetation",
        y = expression("Total Soil Nitrogen (g kg"^-1*")")) + theme(
          #remove x axis label, tickes, labels
+         #remove x axis label, ticks, labels
          axis.title.x=element_blank(),
+         axis.text.x=element_blank(),
+         axis.ticks.x=element_blank(),
          # Remove panel border
          panel.border = element_blank(),  
          # Remove panel grid lines
@@ -960,7 +965,7 @@ tsn_bxp <- ggboxplot(all_data, x = "Habitat", y = '`Total Nitrogen (g kg-1)`', c
 
 show(tsn_bxp)
 #save our plot
-ggsave(path = "Figures", paste0(Sys.Date(), '_total-soil-nitrogen_black-green.svg'), tsn_bxp)
+#ggsave(path = "Figures", paste0(Sys.Date(), '_total-soil-nitrogen_black-green.svg'), tsn_bxp)
 
 #run the GLM. We sqrt transform the data in order to pass Shapiro Wilk.  Though the results of the ANOVA
 #are unchanged
@@ -994,10 +999,69 @@ print(tukey)
 cld <- multcompLetters4(anova, tukey)
 print(cld)
 
+# Water extractable nitrogen boxplots 
 
-#### C:N analysis ----
+#graphing boxplots. Units are ppm aka mg per kg
+tnb_bxp <- ggboxplot(all_data, x = "Habitat", y = "`TNb Concentration (mg N g-1)`", color = "Vegetation", palette = c("black", "limegreen"), lwd = 0.75)  +
+  labs(y = expression("TNb Concentration (mg N g"^-1*")")) + theme(
+    #remove x axis label
+    axis.title.x=element_blank(),
+    # Remove panel border
+    
+    panel.border = element_blank(),  
+    # Remove panel grid lines
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    # Remove panel background
+    panel.background = element_blank(),
+    # Add axis line
+    axis.line = element_line(colour = "black", linewidth = 0.75),
+    #change colour and thickness of axis ticks
+    axis.ticks = element_line(colour = "black", linewidth = 0.5),
+    #change axis labels colour
+    axis.title.y = element_text(colour = "black"),
+    #change tick labels colour
+    axis.text.y = element_text(colour = "black"),
+    legend.title = element_blank()
+  ) 
+
+show(tnb_bxp)
+#save our plot
+#ggsave(path = "Figures", paste0(Sys.Date(), "_tnb_black-green.svg"), tnb_bxp)
 
 
+
+#run the GLM
+glm <- glm(all_data$`TNb Concentration (mg N g-1)` ~ all_data$Habitat*all_data$Vegetation)
+summary(glm)
+#out model seems to fit well
+simulationOutput <- simulateResiduals(fittedModel = glm)
+plot(simulationOutput)
+
+
+#two-way ANOVA.  
+anova <- aov(all_data$`TNb Concentration (mg N g-1)` ~ all_data$Habitat * all_data$Vegetation)
+summary(anova)
+#check homogeneity of variance
+plot(anova, 1)
+#levene test.  if p value < 0.05, there is evidence to suggest that the variance across groups is statistically significantly different.
+leveneTest(all_data$`TNb Concentration (mg N g-1)` ~ all_data$Habitat * all_data$Vegetation)
+#check normality.  
+plot(anova, 2)
+#conduct shapiro-wilk test on ANOVA residules
+#extract the residuals
+aov_residuals <- residuals(object = anova)
+#run shapiro-wilk test.  if p > 0.05 the data is normal
+shapiro.test(x = aov_residuals)
+
+#tukey's test to identify significant interactions
+tukey <- TukeyHSD(anova)
+print(tukey)
+#compact letter display
+cld <- multcompLetters4(anova, tukey)
+print(cld)
+
+# C:N analysis
 #plot carbon:nitrogen ratio
 cnr_bxp <- ggboxplot(all_data, x = "Habitat", y = 'C:N ratio', color = "Vegetation", palette = c("black", "limegreen"), lwd = 0.75)  +
   labs(x = "Habitat x Vegetation",
@@ -1023,7 +1087,7 @@ cnr_bxp <- ggboxplot(all_data, x = "Habitat", y = 'C:N ratio', color = "Vegetati
        ) 
 show(cnr_bxp)
 #save our plot
-ggsave(path = "Figures", paste0(Sys.Date(), '_total-soil-carbon-nitrogen-ratio_black-green.svg'), cnr_bxp)
+#ggsave(path = "Figures", paste0(Sys.Date(), '_total-soil-carbon-nitrogen-ratio_black-green.svg'), cnr_bxp)
 
 #run the GLM
 glm <- glm(all_data$`C:N ratio` ~ all_data$Habitat*all_data$Vegetation)
@@ -1058,67 +1122,20 @@ print(cld)
 
 
 
-#### Water extractable nitrogen boxplots ----
 
-#graphing boxplots. Units are ppm aka mg per kg
-tnb_bxp <- ggboxplot(all_data, x = "Habitat", y = "`TNb Concentration (mg N g-1)`", color = "Vegetation", palette = c("black", "limegreen"), lwd = 0.75)  +
-  labs(y = expression("TNb Concentration (mg N g"^-1*")")) + theme(
-    #remove x axis label
-    axis.title.x=element_blank(),
-    # Remove panel border
-    
-    panel.border = element_blank(),  
-    # Remove panel grid lines
-    panel.grid.major = element_blank(),
-    panel.grid.minor = element_blank(),
-    # Remove panel background
-    panel.background = element_blank(),
-    # Add axis line
-    axis.line = element_line(colour = "black", linewidth = 0.75),
-    #change colour and thickness of axis ticks
-    axis.ticks = element_line(colour = "black", linewidth = 0.5),
-    #change axis labels colour
-    axis.title.y = element_text(colour = "black"),
-    #change tick labels colour
-    axis.text.y = element_text(colour = "black"),
-    legend.title = element_blank()
-  ) 
 
-show(tnb_bxp)
-#save our plot
-ggsave(path = "Figures", paste0(Sys.Date(), "_tnb_black-green.svg"), tnb_bxp)
+#save 770 wide, 640 high
+panel_bxp <- ggarrange(alpha_bxp, tsn_bxp, tnb_bxp, cnr_bxp, 
+                       labels = c("A", "B", "C", "D"),
+                       ncol = 2, nrow = 2,
+                       common.legend = TRUE, legend="top")
+
+show(panel_bxp)
+#save the image
+ggsave(path = "Figures", paste0(Sys.Date(), "_4-panel-alpha-TN-WEN-CNratio.svg"), panel_bxp, width = 8, height = 7, dpi = 300)
 
 
 
-#run the GLM
-glm <- glm(all_data$`TNb Concentration (mg N g-1)` ~ all_data$Habitat*all_data$Vegetation)
-summary(glm)
-#out model seems to fit well
-simulationOutput <- simulateResiduals(fittedModel = glm)
-plot(simulationOutput)
-
-
-#two-way ANOVA.  
-anova <- aov(all_data$`TNb Concentration (mg N g-1)` ~ all_data$Habitat * all_data$Vegetation)
-summary(anova)
-#check homogeneity of variance
-plot(anova, 1)
-#levene test.  if p value < 0.05, there is evidence to suggest that the variance across groups is statistically significantly different.
-leveneTest(all_data$`TNb Concentration (mg N g-1)` ~ all_data$Habitat * all_data$Vegetation)
-#check normality.  
-plot(anova, 2)
-#conduct shapiro-wilk test on ANOVA residules
-#extract the residuals
-aov_residuals <- residuals(object = anova)
-#run shapiro-wilk test.  if p > 0.05 the data is normal
-shapiro.test(x = aov_residuals)
-
-#tukey's test to identify significant interactions
-tukey <- TukeyHSD(anova)
-print(tukey)
-#compact letter display
-cld <- multcompLetters4(anova, tukey)
-print(cld)
 
 
 #### Soil cation boxplots ----
@@ -1690,7 +1707,7 @@ figure <- ggboxplot(all_data, x = "Habitat", y = 'Individuals per m2 to 10 cm de
 #display our plot
 figure
 #save our plot
-ggsave(path = "Figures", paste0(Sys.Date(), '_morphotype-abundances_black-green.svg'), figure)
+ggsave(path = "Figures", paste0(Sys.Date(), '_morphotype-abundances_black-green.svg'), figure, width = 5, height = 4, dpi = 300)
 
 
 #run the GLM
