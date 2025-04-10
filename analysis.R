@@ -1682,6 +1682,14 @@ df_summary <- bind_rows(group_summary, .id = "group_code")
 # View the result
 print(df_summary)
 
+#get percentages of mites/springtails of all morphospecies
+all_data$`Percentage Mites` = (all_data$Mites/(all_data$Mites + all_data$Collembola +all_data$`Other Morphospecies`))*100
+all_data$`Percentage Collembola` = (all_data$Collembola/(all_data$Mites + all_data$Collembola +all_data$`Other Morphospecies`))*100
+all_data$`Percentage Other Morphospecies` = (all_data$`Other Morphospecies`/(all_data$Mites + all_data$Collembola +all_data$`Other Morphospecies`))*100
+
+#we are printing multiple lines so use cat()
+cat("Min mite percentage: ", min(all_data$`Percentage Mites`), "Max mite percentage: ", max(all_data$`Percentage Mites`),"Min collembola percentage: ", min(all_data$`Percentage Collembola`), "Max collembola percentage: ", max(all_data$`Percentage Collembola`), "Min other morphospecies percentage: ", min(all_data$`Percentage Other Morphospecies`), "Max other morphospecies: ", max(all_data$`Percentage Other Morphospecies`))
+
 #plot abundances
 figure <- ggboxplot(all_data, x = "Habitat", y = 'Individuals per m2 to 10 cm depth', color = "Vegetation", palette = c("black", "limegreen"), lwd = 0.75)  +
   labs(y = expression("1000 individuals per m"^2*" soil (to 10 cm depth)")) + theme( #remove x axis label
