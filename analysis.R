@@ -2118,6 +2118,49 @@ for(i in unique(treat)) {
                 groups=treat[treat==i],col=colors[grep(i,treat)],label=F) } }
 
 
+
+#overlay mesofauna morphotypes (instrinsic variables)
+meso.intfit <- envfit(example_NMDS, spe, permutations = 999)
+dev.new()
+ordiplot(example_NMDS, type = "n", main = "intrinsic variables")
+#orditorp(example_NMDS, display = "sites", labels = F, pch = c(16, 8, 17, 18) [as.numeric(env$`CN ratio`)], col = c("green", "blue", "orange", "black") [as.numeric(env$`CN ratio`)], cex = 1)
+for(i in unique(treat)) {
+  #we have added an if statement so we can chose which points and ellipses to plot at a time e.g. i == "Grassland Bracken".  If we want to plot all ellipses simultaneously, set i == i
+  if(i == i){
+    #plot the sample IDs on the NMDS, with the colour specific to the treatment
+    # orditorp(example_NMDS$point[grep(i,treat),],display="sites", col=colors[grep(i,treat)], cex=0.7, air=0.01)
+    #plot point codes for each site
+    points(example_NMDS$point[grep(i,treat),], pch = pchs[grep(i,treat)], col = colors[grep(i,treat)], cex = 0.7)
+    #plots ellipse with ellipse centered on the centroid of the samples from the same treatment (and thus encapsulating 95% of the variance)
+    ordiellipse(example_NMDS$point[grep(i,treat),],kind = "se", conf = 0.95, draw="polygon",
+                groups=treat[treat==i],col=colors[grep(i,treat)],label=F) } }
+
+plot(meso.intfit, col = "black", cex = 0.7)
+
+
+
+
+#overlay environmental variables
+env <- all_data[, 12:20]
+rownames(env) <- all_data[, 1]
+meso.envfit <- envfit(example_NMDS, env, permutations = 999)
+
+ordiplot(example_NMDS, type = "n", main = "extrinsic variables")
+#orditorp(example_NMDS, display = "sites", labels = F, pch = c(16, 8, 17, 18) [as.numeric(env$`CN ratio`)], col = c("green", "blue", "orange", "black") [as.numeric(env$`CN ratio`)], cex = 1)
+for(i in unique(treat)) {
+  #we have added an if statement so we can chose which points and ellipses to plot at a time e.g. i == "Grassland Bracken".  If we want to plot all ellipses simultaneously, set i == i
+  if(i == i){
+    #plot the sample IDs on the NMDS, with the colour specific to the treatment
+    # orditorp(example_NMDS$point[grep(i,treat),],display="sites", col=colors[grep(i,treat)], cex=0.7, air=0.01)
+    #plot point codes for each site
+    points(example_NMDS$point[grep(i,treat),], pch = pchs[grep(i,treat)], col = colors[grep(i,treat)], cex = 0.7)
+    #plots ellipse with ellipse centered on the centroid of the samples from the same treatment (and thus encapsulating 95% of the variance)
+    ordiellipse(example_NMDS$point[grep(i,treat),],kind = "se", conf = 0.95, draw="polygon",
+                groups=treat[treat==i],col=colors[grep(i,treat)],label=F) } }
+
+plot(meso.envfit, col = "black", cex = 0.7)
+
+
 #save the file using Export -> Save As Image -> Width = 655, Height = 500 
 
 # do PERMANOVA analysis
