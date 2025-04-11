@@ -344,6 +344,7 @@ shapiro.test(x = aov_residuals)
 #tukey's test to identify significant interactions
 tukey <- TukeyHSD(anova)
 print(tukey)
+
 #compact letter display
 cld <- multcompLetters4(anova, tukey)
 print(cld)
@@ -484,7 +485,7 @@ d <- readr::read_csv(
 # repeat at wavelengths of 250 (aromaticity, apparent molecular weight), 254 (aromaticity), 260 (hydrophobic C content), 265 (relative abundance of functional groups), 272 (aromaticity), 280 (hydrophobic C content, humification index, apparent molecular size), 285 (humification index), 300 (characterization of humic substances), 340 (colour), 350 (apparent molecular size), 365 (aromaticity, apparent molecular weight), 400 (humic substances characterization), 436 (quality indicator), 465 (relative abundance of functional groups)
 
 #list of wavelengths of interest
-wavelength_of_interest <- list(250, 254, 260, 265, 272, 280, 285, 300, 340, 350, 365, 400, 436, 465)
+wavelength_of_interest <- list(254, 250, 254, 260, 265, 272, 280, 285, 300, 340, 350, 365, 400, 436, 465)
 
 #function to plot data for DOM, requires dataframe d (with columns SampleID, Wavelength, Absorbance) and wavelenth of interest
 DOMboxplotter <- function(d, wavelength){
@@ -524,7 +525,7 @@ DOMboxplotter <- function(d, wavelength){
       axis.title.y = element_text(colour = "black"),
       #change tick labels colour
       axis.text.y = element_text(colour = "black"),
-      
+      legend.title = element_blank()
     ) 
   
   #create file name for our plot.  Use paste0 so there are no spaces between each item in the list
@@ -1063,7 +1064,7 @@ print(cld)
 
 # C:N analysis
 #plot carbon:nitrogen ratio
-cnr_bxp <- ggboxplot(all_data, x = "Habitat", y = 'C:N ratio', color = "Vegetation", palette = c("black", "limegreen"), lwd = 0.75)  +
+cnr_bxp <- ggboxplot(all_data, x = "Habitat", y = 'CN ratio', color = "Vegetation", palette = c("black", "limegreen"), lwd = 0.75)  +
   labs(x = "Habitat x Vegetation",
        y = "C:N ratio") + theme(
          #remove x axis label, tickes, labels
@@ -1090,7 +1091,7 @@ show(cnr_bxp)
 #ggsave(path = "Figures", paste0(Sys.Date(), '_total-soil-carbon-nitrogen-ratio_black-green.svg'), cnr_bxp)
 
 #run the GLM
-glm <- glm(all_data$`C:N ratio` ~ all_data$Habitat*all_data$Vegetation)
+glm <- glm(all_data$`CN ratio` ~ all_data$Habitat*all_data$Vegetation)
 summary(glm)
 #out model seems to fit well
 simulationOutput <- simulateResiduals(fittedModel = glm)
@@ -1099,12 +1100,12 @@ plot(simulationOutput)
 
 #two-way ANOVA.  We sqrt transform the data in order to pass Shapiro Wilk.  Though the results of the ANOVA
 #are unchanged
-anova <- aov(all_data$`C:N ratio` ~ all_data$Habitat * all_data$Vegetation)
+anova <- aov(all_data$`CN ratio` ~ all_data$Habitat * all_data$Vegetation)
 summary(anova)
 #check homogeneity of variance
 plot(anova, 1)
 #levene test.  if p value < 0.05, there is evidence to suggest that the variance across groups is statistically significantly different.
-leveneTest(all_data$`C:N ratio` ~ all_data$Habitat * all_data$Vegetation)
+leveneTest(all_data$`CN ratio` ~ all_data$Habitat * all_data$Vegetation)
 #check normality.  
 plot(anova, 2)
 #conduct shapiro-wilk test on ANOVA residules
@@ -1119,7 +1120,6 @@ print(tukey)
 #compact letter display
 cld <- multcompLetters4(anova, tukey)
 print(cld)
-
 
 
 
