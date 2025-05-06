@@ -1138,6 +1138,15 @@ ggsave(path = "Figures", paste0(Sys.Date(), "_4-panel-alpha-TN-WEN-CNratio.svg")
 
 
 
+#### standard deviations of WEN ----
+# Group by habitat and vegetation, then calculate standard deviation of nitrogen
+df_summary <- all_data %>%
+  group_by(Habitat, Vegetation) %>%
+  summarise(sd_nitrogen = sd(`TNb Concentration (mg N g-1)`, na.rm = TRUE))
+
+# View result
+print(df_summary)
+
 #### Soil cation boxplots ----
 
 #graphing boxplots. Units are ppm aka mg per kg
