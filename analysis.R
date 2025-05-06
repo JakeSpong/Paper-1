@@ -2145,7 +2145,7 @@ env <- all_data[, 12:20]
 rownames(env) <- all_data[, 1]
 meso.envfit <- envfit(example_NMDS, env, permutations = 999)
 
-ordiplot(example_NMDS, type = "n", main = "extrinsic variables")
+ordiplot(example_NMDS, type = "n")
 #orditorp(example_NMDS, display = "sites", labels = F, pch = c(16, 8, 17, 18) [as.numeric(env$`CN ratio`)], col = c("green", "blue", "orange", "black") [as.numeric(env$`CN ratio`)], cex = 1)
 for(i in unique(treat)) {
   #we have added an if statement so we can chose which points and ellipses to plot at a time e.g. i == "Grassland Bracken".  If we want to plot all ellipses simultaneously, set i == i
@@ -2223,141 +2223,156 @@ hb.multi <- beta.multi(hb.core, index.family = "jaccard")
 hn.multi <- beta.multi(hn.core, index.family = "jaccard")
 wb.multi <- beta.multi(wb.core, index.family = "jaccard")
 wn.multi <- beta.multi(wn.core, index.family = "jaccard")
-# sampling across a given number of sites, with "samples" being the number of random samples used to calculate the distribution of dissimilarity measures
-gb.samp <- beta.sample(gb.core, index.family = "jaccard",
-                       sites=5, samples=100)
-gn.samp <- beta.sample(gn.core, index.family = "jaccard",
-                       sites=5, samples=100)
-hb.samp <- beta.sample(hb.core, index.family = "jaccard",
-                       sites=5, samples=100)
-hn.samp <- beta.sample(hn.core, index.family = "jaccard",
-                       sites=5, samples=100)
-wb.samp <- beta.sample(wb.core, index.family = "jaccard",
-                       sites=5, samples=100)
-wn.samp <- beta.sample(wn.core, index.family = "jaccard",
-                       sites=5, samples=100)
 
-# plotting the distributions of components
-dist.gb <- gb.samp$sampled.values
-dist.gn <- gn.samp$sampled.values
-dist.hb <- hb.samp$sampled.values
-dist.hn <- hn.samp$sampled.values
-dist.wb <- wb.samp$sampled.values
-dist.wn <- wn.samp$sampled.values
+#compile the measures into a table. JTU = value of the turnover component, measured as turnover fraction of Jaccard dissimilarity.  JNE = value of the nestedness component, measured as nestedness-resultant faction of Jaccard dissimilarity.  .JAC = value of the overall beta diversity, measured as the Jaccard dissimilarity
 
-#Multi-site dissimilarities
-#plots total dissimilarity for each treatment
-plot(density(dist.gb$beta.JAC), col = "#999999", xlim = c(0, 2), ylim = c(0, 2), xlab=expression(beta[JAC]), main='', lwd=3)
-lines(density(dist.gn$beta.JAC), col = "#E69F00", lwd=3) 
-lines(density(dist.hb$beta.JAC), col = "#56B4E9", lwd=3) 
-lines(density(dist.hn$beta.JAC), col = "#009E73", lwd=3) 
-lines(density(dist.wb$beta.JAC), col = "#CC79A7", lwd=3) 
-lines(density(dist.wn$beta.JAC), col = "#0072B2", lwd=3) 
-#legend(1.5, 2.0, legend = c("Grassland Bracken", "Grassland Non-bracken", "Heathland Bracken", "Heathland Non-bracken", "Woodland Bracken", "Woodland Non-Bracken"), fill = c("#999999", "#E69F00", "#56B4E9", "#009E73", "#CC79A7","#0072B2"), bty = "n")
-
-#plot nestedness separately due to large difference in values compared to turnover and total dissimilarity
-plot(density(dist.gb$beta.JNE), col = "#999999", xlim = c(0, 0.1), ylim = c(0, 100), xlab=expression(beta[JNE]), main='', lty = 3, lwd=3)
-lines(density(dist.gn$beta.JNE), col = '#E69F00',lty=3, lwd=2) 
-lines(density(dist.hb$beta.JNE), col = '#56B4E9',lty=3, lwd=2) 
-lines(density(dist.hn$beta.JNE), col = '#009E73',lty=3, lwd=2)
-lines(density(dist.wb$beta.JNE), col = '#CC79A7',lty=3, lwd=2) 
-lines(density(dist.wn$beta.JNE), col = '#0072B2',lty=3, lwd=2) 
-
-plot(density(dist.gb$beta.JTU), col = "#999999", xlim = c(0, 2), ylim = c(0, 2), xlab=expression(beta[JTU]), main='', lty = 2,lwd=3)
-#plots turnover-resultant dissimilarity for grassland bracken sites
-lines(density(dist.gn$beta.JTU), col = '#E69F00',lty=2, lwd=2)
-lines(density(dist.hb$beta.JTU), col = '#56B4E9',lty=2, lwd=2)
-lines(density(dist.hn$beta.JTU), col = '#009E73',lty=2, lwd=2)
-lines(density(dist.wb$beta.JTU), col = '#CC79A7',lty=2, lwd=2)
-lines(density(dist.wn$beta.JTU), col = '#0072B2',lty=2, lwd=2)
+#rownames
+habitats <- c("Grassland", "Grassland", "Heathland", "Heathland", "Woodland", "Woodland")
+bracken <- c("Present", "Absent","Present", "Absent","Present", "Absent")
+#put all the dissimilarity measures into a table
+# Combine lists into a data frame, each list becomes a row
+beta_table <- as.data.frame(rbind(gb.multi, gn.multi, hb.multi, hn.multi, wb.multi, wn.multi))
+#ensure all data is numeric
+beta_table <- as.data.frame(lapply(beta_table, function(x) as.numeric(as.character(x))))
+# Combine with new columns on the left
+beta_table <- cbind(Habitat = habitats, Bracken = bracken, beta_table)
+beta_table <- as.data.frame(beta_table)
 
 
 
-
-#pairwise
-pair.gb <- beta.pair(gb, index.family = "jaccard")
-# plotting clusters
-dist.s <- gb.samp$sampled.values
-plot(hclust(pair.gb$beta.jtu, method="average"), hang=-1, main='', sub='', xlab='')
-title(xlab=expression(beta[jtu]), line=0.3)
-plot(hclust(pair.gb$beta.jne, method="average"), hang=-1, main='', sub='',, xlab='')
-title(xlab=expression(beta[jne]), line=0.3)
-
-
-#run dissimilarity on bracken sites vs non bracken sites
-
-bracken <- species_binary[c(1,2,3,4,5,11,12,13,14,15, 21,22,23,24,25), ]
-nonbracken <- species_binary[c(6,7,8,9,10, 16, 17, 18, 19, 20, 26,27,28,29,30),]
-pair.bracken<- beta.pair(bracken, index.family = "jaccard")
-pair.nonbracken<- beta.pair(nonbracken, index.family = "jaccard")
-# plotting clusters
-#bracken
-plot(hclust(pair.bracken$beta.jtu, method="average"), hang=-1, main='', sub='', xlab='')
-title(xlab=expression(beta[jtu - bracken]), line=0.3)
-plot(hclust(pair.bracken$beta.jne, method="average"), hang=-1, main='', sub='',, xlab='')
-title(xlab=expression(beta[jne - bracken]), line=0.3)
-#non-bracken
-plot(hclust(pair.nonbracken$beta.jtu, method="average"), hang=-1, main='', sub='', xlab='')
-title(xlab=expression(beta[jtu] - nonbracken), line=0.3)
-plot(hclust(pair.nonbracken$beta.jne, method="average"), hang=-1, main='', sub='',, xlab='')
-title(xlab=expression(beta[jne - nonbracken]), line=0.3)
-
-#the correlation between the two clustered datasets (bracken and non-bracken)
-#cor(cophenetic(as.dendrogram(hclust(pair.nonbracken$beta.jtu, method="average"))), cophenetic(as.dendrogram(hclust(pair.bracken$beta.jne, method="average"))))
-#get betapart object
-species_binary.core <- betapart.core(species_binary)
-
-## USING SORENSEN DISSIMILARITY
-
-# multiple site measures
-species_binary.multi <- beta.multi(species_binary.core, index.family = "sorensen")
-# sampling across a given number of sites, with "samples" being the number of random samples used to calculate the distribution of dissimilarity measures
-species_binary.samp <- beta.sample(species_binary.core, index.family = "sorensen",
-                                   sites=30, samples=100)
-# plotting the distributions of components
-dist.s <- species_binary.samp$sampled.values
-plot(density(dist.s$beta.SOR), xlim = c(0, 3), ylim = c(0, 70), xlab='Beta
-diversity (Sorensen)', main='', lwd=3)
-lines(density(dist.s$beta.SNE), lty=1, lwd=2) 
-lines(density(dist.s$beta.SIM), lty=2, lwd=2)
-
-# pairwise  using sorensen dissimilarity
-pair.s <- beta.pair(species_binary, index.family = "sorensen")
-# plotting clusters
-dist.s <- species_binary.samp$sampled.values
-plot(hclust(pair.s$beta.sim, method="average"), hang=-1, main='', sub='', xlab='')
-title(xlab=expression(beta[sim]), line=0.3)
-plot(hclust(pair.s$beta.sne, method="average"), hang=-1, main='', sub='',, xlab='')
-title(xlab=expression(beta[sne]), line=0.3)
+# # sampling across a given number of sites, with "samples" being the number of random samples used to calculate the distribution of dissimilarity measures
+# gb.samp <- beta.sample(gb.core, index.family = "jaccard",
+#                        sites=5, samples=100)
+# gn.samp <- beta.sample(gn.core, index.family = "jaccard",
+#                        sites=5, samples=100)
+# hb.samp <- beta.sample(hb.core, index.family = "jaccard",
+#                        sites=5, samples=100)
+# hn.samp <- beta.sample(hn.core, index.family = "jaccard",
+#                        sites=5, samples=100)
+# wb.samp <- beta.sample(wb.core, index.family = "jaccard",
+#                        sites=5, samples=100)
+# wn.samp <- beta.sample(wn.core, index.family = "jaccard",
+#                        sites=5, samples=100)
+# 
+# # plotting the distributions of components
+# dist.gb <- gb.samp$sampled.values
+# dist.gn <- gn.samp$sampled.values
+# dist.hb <- hb.samp$sampled.values
+# dist.hn <- hn.samp$sampled.values
+# dist.wb <- wb.samp$sampled.values
+# dist.wn <- wn.samp$sampled.values
+# 
+# #Multi-site dissimilarities
+# #plots total dissimilarity for each treatment
+# plot(density(dist.gb$beta.JAC), col = "#999999", xlim = c(0, 2), ylim = c(0, 2), xlab=expression(beta[JAC]), main='', lwd=3)
+# lines(density(dist.gn$beta.JAC), col = "#E69F00", lwd=3) 
+# lines(density(dist.hb$beta.JAC), col = "#56B4E9", lwd=3) 
+# lines(density(dist.hn$beta.JAC), col = "#009E73", lwd=3) 
+# lines(density(dist.wb$beta.JAC), col = "#CC79A7", lwd=3) 
+# lines(density(dist.wn$beta.JAC), col = "#0072B2", lwd=3) 
+# #legend(1.5, 2.0, legend = c("Grassland Bracken", "Grassland Non-bracken", "Heathland Bracken", "Heathland Non-bracken", "Woodland Bracken", "Woodland Non-Bracken"), fill = c("#999999", "#E69F00", "#56B4E9", "#009E73", "#CC79A7","#0072B2"), bty = "n")
+# 
+# #plot nestedness separately due to large difference in values compared to turnover and total dissimilarity
+# plot(density(dist.gb$beta.JNE), col = "#999999", xlim = c(0, 0.1), ylim = c(0, 100), xlab=expression(beta[JNE]), main='', lty = 3, lwd=3)
+# lines(density(dist.gn$beta.JNE), col = '#E69F00',lty=3, lwd=2) 
+# lines(density(dist.hb$beta.JNE), col = '#56B4E9',lty=3, lwd=2) 
+# lines(density(dist.hn$beta.JNE), col = '#009E73',lty=3, lwd=2)
+# lines(density(dist.wb$beta.JNE), col = '#CC79A7',lty=3, lwd=2) 
+# lines(density(dist.wn$beta.JNE), col = '#0072B2',lty=3, lwd=2) 
+# 
+# plot(density(dist.gb$beta.JTU), col = "#999999", xlim = c(0, 2), ylim = c(0, 2), xlab=expression(beta[JTU]), main='', lty = 2,lwd=3)
+# #plots turnover-resultant dissimilarity for grassland bracken sites
+# lines(density(dist.gn$beta.JTU), col = '#E69F00',lty=2, lwd=2)
+# lines(density(dist.hb$beta.JTU), col = '#56B4E9',lty=2, lwd=2)
+# lines(density(dist.hn$beta.JTU), col = '#009E73',lty=2, lwd=2)
+# lines(density(dist.wb$beta.JTU), col = '#CC79A7',lty=2, lwd=2)
+# lines(density(dist.wn$beta.JTU), col = '#0072B2',lty=2, lwd=2)
+# 
 
 
-
-
-## USING JACCARD DISSIMILARITY
-
-# multiple site measures
-species_binary.multi <- beta.multi(species_binary.core, index.family = "jaccard")
-# sampling across a given number of sites, with "samples" being the number of random samples used to calculate the distribution of dissimilarity measures
-species_binary.samp <- beta.sample(species_binary.core, index.family = "jaccard",
-                                   sites=30, samples=100)
-
-# plotting the distributions of components
-dist.s <- species_binary.samp$sampled.values
-plot(density(dist.s$beta.JAC), xlim = c(0, 3), ylim = c(0, 150), xlab='Beta
-diversity (Jaccard)', main='', lwd=3)
-lines(density(dist.s$beta.JNE), lty=1, lwd=2) 
-lines(density(dist.s$beta.JTU), lty=2, lwd=2)
-
-#pairwise
-pair.s <- beta.pair(species_binary, index.family = "jaccard")
-# plotting clusters
-dist.s <- species_binary.samp$sampled.values
-plot(hclust(pair.s$beta.jtu, method="average"), hang=-1, main='', sub='', xlab='')
-title(xlab=expression(beta[jtu]), line=0.3)
-plot(hclust(pair.s$beta.jne, method="average"), hang=-1, main='', sub='',, xlab='')
-title(xlab=expression(beta[jne]), line=0.3)
-
-#extract meaningful numbers for comparison in discussion...
+# 
+# #pairwise
+# pair.gb <- beta.pair(gb, index.family = "jaccard")
+# # plotting clusters
+# dist.s <- gb.samp$sampled.values
+# plot(hclust(pair.gb$beta.jtu, method="average"), hang=-1, main='', sub='', xlab='')
+# title(xlab=expression(beta[jtu]), line=0.3)
+# plot(hclust(pair.gb$beta.jne, method="average"), hang=-1, main='', sub='',, xlab='')
+# title(xlab=expression(beta[jne]), line=0.3)
+# 
+# 
+# #run dissimilarity on bracken sites vs non bracken sites
+# 
+# bracken <- species_binary[c(1,2,3,4,5,11,12,13,14,15, 21,22,23,24,25), ]
+# nonbracken <- species_binary[c(6,7,8,9,10, 16, 17, 18, 19, 20, 26,27,28,29,30),]
+# pair.bracken<- beta.pair(bracken, index.family = "jaccard")
+# pair.nonbracken<- beta.pair(nonbracken, index.family = "jaccard")
+# # plotting clusters
+# #bracken
+# plot(hclust(pair.bracken$beta.jtu, method="average"), hang=-1, main='', sub='', xlab='')
+# title(xlab=expression(beta[jtu - bracken]), line=0.3)
+# plot(hclust(pair.bracken$beta.jne, method="average"), hang=-1, main='', sub='',, xlab='')
+# title(xlab=expression(beta[jne - bracken]), line=0.3)
+# #non-bracken
+# plot(hclust(pair.nonbracken$beta.jtu, method="average"), hang=-1, main='', sub='', xlab='')
+# title(xlab=expression(beta[jtu] - nonbracken), line=0.3)
+# plot(hclust(pair.nonbracken$beta.jne, method="average"), hang=-1, main='', sub='',, xlab='')
+# title(xlab=expression(beta[jne - nonbracken]), line=0.3)
+# 
+# #the correlation between the two clustered datasets (bracken and non-bracken)
+# #cor(cophenetic(as.dendrogram(hclust(pair.nonbracken$beta.jtu, method="average"))), cophenetic(as.dendrogram(hclust(pair.bracken$beta.jne, method="average"))))
+# #get betapart object
+# species_binary.core <- betapart.core(species_binary)
+# 
+# ## USING SORENSEN DISSIMILARITY
+# 
+# # multiple site measures
+# species_binary.multi <- beta.multi(species_binary.core, index.family = "sorensen")
+# # sampling across a given number of sites, with "samples" being the number of random samples used to calculate the distribution of dissimilarity measures
+# species_binary.samp <- beta.sample(species_binary.core, index.family = "sorensen",
+#                                    sites=30, samples=100)
+# # plotting the distributions of components
+# dist.s <- species_binary.samp$sampled.values
+# plot(density(dist.s$beta.SOR), xlim = c(0, 3), ylim = c(0, 70), xlab='Beta
+# diversity (Sorensen)', main='', lwd=3)
+# lines(density(dist.s$beta.SNE), lty=1, lwd=2) 
+# lines(density(dist.s$beta.SIM), lty=2, lwd=2)
+# 
+# # pairwise  using sorensen dissimilarity
+# pair.s <- beta.pair(species_binary, index.family = "sorensen")
+# # plotting clusters
+# dist.s <- species_binary.samp$sampled.values
+# plot(hclust(pair.s$beta.sim, method="average"), hang=-1, main='', sub='', xlab='')
+# title(xlab=expression(beta[sim]), line=0.3)
+# plot(hclust(pair.s$beta.sne, method="average"), hang=-1, main='', sub='',, xlab='')
+# title(xlab=expression(beta[sne]), line=0.3)
+# 
+# 
+# 
+# 
+# ## USING JACCARD DISSIMILARITY
+# 
+# # multiple site measures
+# species_binary.multi <- beta.multi(species_binary.core, index.family = "jaccard")
+# # sampling across a given number of sites, with "samples" being the number of random samples used to calculate the distribution of dissimilarity measures
+# species_binary.samp <- beta.sample(species_binary.core, index.family = "jaccard",
+#                                    sites=30, samples=100)
+# 
+# # plotting the distributions of components
+# dist.s <- species_binary.samp$sampled.values
+# plot(density(dist.s$beta.JAC), xlim = c(0, 3), ylim = c(0, 150), xlab='Beta
+# diversity (Jaccard)', main='', lwd=3)
+# lines(density(dist.s$beta.JNE), lty=1, lwd=2) 
+# lines(density(dist.s$beta.JTU), lty=2, lwd=2)
+# 
+# #pairwise
+# pair.s <- beta.pair(species_binary, index.family = "jaccard")
+# # plotting clusters
+# dist.s <- species_binary.samp$sampled.values
+# plot(hclust(pair.s$beta.jtu, method="average"), hang=-1, main='', sub='', xlab='')
+# title(xlab=expression(beta[jtu]), line=0.3)
+# plot(hclust(pair.s$beta.jne, method="average"), hang=-1, main='', sub='',, xlab='')
+# title(xlab=expression(beta[jne]), line=0.3)
 
 #### Nematode abundances boxplots ----
 
