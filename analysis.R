@@ -1652,7 +1652,7 @@ print(sum(all_data$`Morphotype abundance`))
 volume <- 0.1 * (pi*(0.025^2))
 all_data$CoreVolume <- volume
 #number of mesofauna per m3, to a depth of 10cm
-all_data$`Individuals per m2 to 10 cm depth` <- ((all_data$`Morphotype abundance`/all_data$CoreVolume)*0.1)/1000
+all_data$`1000s Individuals per m2 to 10 cm depth` <- ((all_data$`Morphotype abundance`/all_data$CoreVolume)*0.1)/1000
 
 
 #number of mite morphospecies
@@ -2786,24 +2786,22 @@ summary(individual_model)
 
 #### run PCA, to see what is driving mesofauna diversity ----
 
-#generate dataframe ew shall run PCA on.  Ensure veg and morphotype alpha diversity indices
+#generate dataframe ew shall run PCA on.  Ensure veg and morphotype alpha diversity indices, and mesofaua abundances
 #have been computed and added to the dataframe using the relevant tabs
 
 library('FactoMineR') #includes functions needed to vizualize outputs of the PCA
 
 #remove morphospecies count data
-d <- all_data[, -(51:436)]
+d <- all_data[, -(51:442)]
 #remove non-numerical data
 numerical_d <- d[, 7:9]
-numerical_d <- cbind(numerical_d, d[, 12:58])
-#remove column as it is all 0s
-numerical_d <- numerical_d[, -26]
+numerical_d <- cbind(numerical_d, d[, 12:55])
 #remove non-numerical data
 numerical_d <- na.omit(numerical_d)
+
 # Remove columns that are entirely zeros
 numerical_d <- numerical_d[, colSums(numerical_d != 0) > 0]
-#remove veg diversity indices
-numerical_d <- numerical_d[, -c(40:43)]
+
 #normalize the data
 data_normalized <- scale(numerical_d)
 #compute the PCA
