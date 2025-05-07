@@ -1626,14 +1626,25 @@ print(cld)
 
 #### pH vs Al linear modelling ----
 
+
+# Clean the data, removing non 0s
+clean_data <- all_data %>%
+  filter(is.finite(pH), is.finite(`Al (mg g-1)`))
+#linear model of the relationship
+model <- lm(clean_data$`Al (mg g-1)` ~ clean_data$pH)
+summary(model)
+#out model seems to fit well
+simulationOutput <- simulateResiduals(fittedModel = model)
+plot(simulationOutput)
+
 #plot the relationship
-plot <- ggplot(all_data, aes(x = pH, y = `Al (mg g-1)`)) +
+plot <- ggplot(clean_data, aes(x = pH, y = `Al (mg g-1)`)) +
   geom_point(color = "black", size = 2) + # Add points
   geom_smooth(method = "lm", color = "red", se = TRUE) + # Add regression line
   # Line of best fit
-  annotate("text", x = 5.3, y = max(all_data$`Al (mg g-1)`), 
+  annotate("text", x = 5.3, y = 0.2, 
            label = paste("y =", 
-                         round(coef(model)[2], 2), "x +", 
+                         round(coef(model)[2], 1), "x +", 
                          round(coef(model)[1], 2), 
                          "\nR² =", 
                          round(summary(model)$r.squared, 2)), 
@@ -1664,12 +1675,7 @@ show(plot)
 
 ggsave(path = "Figures", paste0(Sys.Date(), "_Al-vs-pH.svg"), plot)
 
-#linear model of the relationship
-model <- lm(all_data$`Al (mg g-1)` ~ all_data$pH)
-summary(model)
-#out model seems to fit well
-simulationOutput <- simulateResiduals(fittedModel = model)
-plot(simulationOutput)
+
 
 
 #### Soil cation summary statistics ----
