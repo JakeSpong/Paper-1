@@ -2000,12 +2000,12 @@ print(cld)
 
 #### NMDS analysis of week 1 only mesofauna abundance data ----
 
-# Load mesofauna abundance data
+# Load mesofauna abundance data.  Choose all morphotypes extracted, or just mites and springtails
 
 #file containg all morphotyes, not just springtails and mites
-filename <- "6) Week-1-morphotypes.csv"
+#filename <- "6) Week-1-morphotypes.csv"
 #csv containing only mites and springtails
-#filename <- "mites-springtails-only week-1-mesofauna-corrected.csv"
+filename <- "7) Week-1-mites-springtails-morphotypes.csv"
 d <- readr::read_csv(here::here("Data", filename), show_col_types = FALSE) 
 #order samples by ID alphabetically
 d <- arrange(d, d["Sample ID"])
@@ -2017,7 +2017,7 @@ d[is.na(d)] <- 0
 #replace row index with sample names
 rownames(d) <- d[,1]
 #just the morphospecies counts
-spe <- d[,-(1:4)]
+spe <- d[,-(1:3)]
 spe <- as.matrix(spe)
 #k is the number of reduced dimensions
 #trymax sets the default number of iterations
@@ -2034,8 +2034,10 @@ treat=c(rep("Grassland Bracken Present",5),rep("Grassland Bracken Absent",5), re
 colors =c(rep("#999999",5),rep("#E69F00",5), rep("#56B4E9",5),rep("#009E73",5), rep("#CC79A7", 5), rep("#0072B2", 5)) 
 #shapes for point codes
 pchs<- c(rep(15, 5), rep(0, 5), rep(16, 5), rep(1, 5), rep(17, 5), rep(2, 5))
-#display the stress
-text(-0.6,2.2, paste("Stress = ", round(example_NMDS$stress, 3)))
+#display the stress if using all morphospecies
+#text(-0.6,2.2, paste("Stress = ", round(example_NMDS$stress, 3)))
+#display the stress if using only mites and springtails
+text(-1.7,1.5, paste("Stress = ", round(example_NMDS$stress, 3)))
 #visualise the points and ellipses
 for(i in unique(treat)) {
   #we have added an if statement so we can chose which points and ellipses to plot at a time e.g. i == "Grassland Bracken".  If we want to plot all ellipses simultaneously, set i == i
@@ -2088,9 +2090,24 @@ plot(ano)
 #### NMDS analysis of week 1 + 2 mesofauna abundance data ----
 
 #only the mite and springtail morphospecies
-#filename <- "mites-springtails-only_week-1+2-mesofauna-corrected.csv"
+#csv containing only mites and springtails
+filename <- "8) Week-1+2-mites-springtails-morphotypes.csv"
+d <- readr::read_csv(here::here("Data", filename), show_col_types = FALSE) 
+#order samples by ID alphabetically
+d <- arrange(d, d["Sample ID"])
+d <- as.data.frame(d)
+#remove all empty rows
+d <- d[1:30,]
+#replace null (empty excell cell) with "0"
+d[is.na(d)] <- 0
+#replace row index with sample names
+rownames(d) <- d[,1]
+#just the morphospecies counts
+spe <- d[,-(1:3)]
+spe <- as.matrix(spe)
+
 #all morphospecies
-spe <- all_data[,51:436]
+#spe <- all_data[,51:436]
 #replace row index with sample names
 rownames(spe) <- all_data[,1]
 spe <- as.matrix(spe)
@@ -2112,8 +2129,10 @@ treat=c(rep("Grassland Bracken Present",5),rep("Grassland Bracken Absent",5), re
 colors =c(rep("#999999",5),rep("#E69F00",5), rep("#56B4E9",5),rep("#009E73",5), rep("#CC79A7", 5), rep("#0072B2", 5)) 
 #shapes for point codes
 pchs<- c(rep(15, 5), rep(0, 5), rep(16, 5), rep(1, 5), rep(17, 5), rep(2, 5))
-#display the stress
-text(-0.8,1.4, paste("Stress = ", round(example_NMDS$stress, 3)))
+#display the stress for all morphotypes
+#text(-0.8,1.4, paste("Stress = ", round(example_NMDS$stress, 3)))
+#display the stress for only mites and springtails
+text(-2,1.3, paste("Stress = ", round(example_NMDS$stress, 3)))
 #visualise the points and ellipses
 for(i in unique(treat)) {
   #we have added an if statement so we can chose which points and ellipses to plot at a time e.g. i == "Grassland Bracken".  If we want to plot all ellipses simultaneously, set i == i
@@ -2805,8 +2824,8 @@ pca_result$sdev^2 / sum(pca_result$sdev^2)  # Proportion of variance explained
 #needed for fviz_eig() function
 library(factoextra)
 #generate scree plot using fviz_eig() function.  This shows the eigenvalues from highest to lowest, i.e. from the components which explain the most variance to the components which explain the least
-fviz_eig(pca_result, addlabels = TRUE)
-
+scree <- fviz_eig(pca_result, addlabels = TRUE)
+show(scree)
 
 # Plotting the PCA results (optional)
 # First PC vs. Second PC
@@ -2826,5 +2845,6 @@ dev.new()
 pca <- fviz_pca_var(pca_result, col.var = "cos2", 
              gradient.cols = c("black", "orange", "green"),
              repel = TRUE)
+show(pca)
 #save the PCA
 ggsave(path = "Figures", paste0(Sys.Date(), '_PCA.svg'), width = 14, height = 10, pca)
