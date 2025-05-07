@@ -13,7 +13,7 @@ library(svglite) #for saving figures as .svg
 library(broom) #for curve fitting when analysing WEOC quality
 library(scales) # displays 100,000 as 100,000, not as 1e5
 library(DHARMa) #to help interpret GLMs
-
+library(ggpubr)
 # renv, already installed in RStudio, used for version control 
 
 #### load the master data file ----
@@ -1146,6 +1146,57 @@ df_summary <- all_data %>%
 
 # View result
 print(df_summary)
+
+#### WEOC:WEN ratio ----
+all_data$`WEOC:WEN` <- all_data$`DOC Concentration (mg C g-1)`/all_data$`TNb Concentration (mg N g-1)`
+
+weocwen_bxp <- ggboxplot(all_data, x = "Habitat", y = "`WEOC:WEN`", color = "Vegetation", palette = c("black", "limegreen"), lwd = 0.75)  +
+  labs(y =  expression("WEOC:WEN")) + theme(
+    #remove x axis label, tickes, labels
+    axis.title.x=element_blank(),
+    # Remove panel border
+    panel.border = element_blank(),  
+    # Remove panel grid lines
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    # Remove panel background
+    panel.background = element_blank(),
+    # Add axis line
+    axis.line = element_line(colour = "black", linewidth = 0.5),
+    #change colour and thickness of axis ticks
+    axis.ticks = element_line(colour = "black", linewidth = 0.5),
+    #change axis labels colour
+    axis.title.y = element_text(colour = "black"),
+    #change tick labels colour
+    axis.text.y = element_text(colour = "black"),
+    legend.title = element_blank()
+  ) 
+
+show(weocwen_bxp)
+
+#two-way ANOVA.  
+anova <- aov(all_data$`WEOC:WEN` ~ all_data$Habitat * all_data$Vegetation)
+#check homogeneity of variance
+plot(anova, 1)
+#levene test.  if p value < 0.05, there is evidence to suggest that the variance across groups is statistically significantly different.
+leveneTest(all_data$`Na (mg g-1)` ~ all_data$Habitat * all_data$Vegetation)
+#check normality.  
+plot(anova, 2)
+#conduct shapiro-wilk test on ANOVA residules
+#extract the residuals
+aov_residuals <- residuals(object = anova)
+#run shapiro-wilk test.  if p > 0.05 the data is normal
+shapiro.test(x = aov_residuals)
+#look at the results
+summary(anova)
+#tukey's test to identify significant interactions
+tukey <- TukeyHSD(anova)
+print(tukey)
+#compact letter display
+cld <- multcompLetters4(anova, tukey)
+print(cld)
+
+
 
 #### Soil cation boxplots ----
 
