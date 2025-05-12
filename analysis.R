@@ -2903,3 +2903,41 @@ pca <- fviz_pca_var(pca_result, col.var = "cos2",
 show(pca)
 #save the PCA
 ggsave(path = "Figures", paste0(Sys.Date(), '_PCA.svg'), width = 14, height = 10, pca)
+
+####dbRDA ----
+
+#define the community data frame
+
+#order samples by ID alphabetically
+d <- arrange(all_data, all_data["Sample ID"])
+d <- as.data.frame(d)
+#remove all empty rows
+d <- d[1:30,]
+#replace row index with sample names
+rownames(d) <- d[,1]
+#the community data frame
+cdf <- d[,(51:436)]
+#replace null (empty excell cell) with "0"
+cdf[is.na(cdf)] <- 0
+cdf <- as.matrix(spe)
+#explanatory data frame.  THese have different base units so we may want to standardize them e.g. by z scoring
+edf <- d[,(3:50)]
+
+#save the results of the dbRDA to a variable, looking at sample location effects only (longitude, latitude, elevation) - account for 18% of the variance in the microivert communities - but not the other 82%!
+dbrda_summary <- dbrda(formula = cdf ~ LatitudeN + LongitudeE  + `Elevation (m)`, edf, distance = "euclidean", sqrt.dist = FALSE, add = FALSE, dfun = vegdist, metaMDSdist = FALSE, na.action = na.exclude, subset = NULL)
+summary(dbrda_summary)
+#view the ordination of the consrtained axes
+plot(dbrda_summary)
+
+#save the results of the dbRDA to a variable, looking at all variables  We don't want more explanatory variables than there are number of objects (sites, samples, observations) in our data matrices
+dbrda_summary <- dbrda(formula = cdf ~  LatitudeN + LongitudeE  + `Elevation (m)` + `Water content (% of wet soil mass)` + `Total Carbon (g kg-1)` + `Total Nitrogen (g kg-1)` + pH + `DOC Concentration (mg C g-1)` +`TNb Concentration (mg N g-1)` + `Al (mg g-1)`  + `Zn (mg g-1)`  + `Mn (mg g-1)`  + `Mg (mg g-1)`  + `Ca (mg g-1)`  + `K (mg g-1)`  + `Na (mg g-1)` + `% Bracken`, edf, distance = "euclidean", sqrt.dist = FALSE, add = FALSE, dfun = vegdist, metaMDSdist = FALSE, na.action = na.exclude, subset = NULL)
+summary(dbrda_summary)
+#view the ordination of the consrtained axes
+dev.new()
+plot(dbrda_summary)
+#is the model significant?
+anova(dbrda_summary)
+#test axes for significance
+anova(dbrda_summary, by = "axis", perm.max = 500)
+#test environmental variables for significance
+anova(dbrda_summary, by = "terms", perm.max = 200)
