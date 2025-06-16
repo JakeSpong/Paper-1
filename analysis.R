@@ -2849,10 +2849,10 @@ summary(individual_model)
 library('FactoMineR') #includes functions needed to vizualize outputs of the PCA
 
 #remove morphospecies count data
-d <- all_data[, -(51:442)]
+d <- all_data[, -(51:436)]
 #remove non-numerical data
-numerical_d <- d[, 7:9]
-numerical_d <- cbind(numerical_d, d[, 12:55])
+numerical_d <- d[, 12:27]
+numerical_d <- cbind(numerical_d, d[, 49:50])
 #remove non-numerical data
 numerical_d <- na.omit(numerical_d)
 
@@ -2890,6 +2890,7 @@ plot(pca_result$x[, 1], pca_result$x[,2],
 
 
 # Biplot to visualize the PCA results.  We are vizualising the similarities and differences between samples, and shows the impact of each attribute on each of the principal components.  Variables that are grouped together are positively correlated with one another.  The further the distance between the variable and the origin, the better represented the variaible is.  Variables that are negatively correlated are displayed to the opposite side of the biplot's origin.
+dev.new()
 biplot(pca_result)
 
 #now determine the variable's contribution to principal components.  This representation is called the Cos2, and corresponds to the square cosine.  A low value means the variable is not perfectly represented by that component, whilst a high value means a good representation of the variable on that component.
@@ -2903,3 +2904,122 @@ pca <- fviz_pca_var(pca_result, col.var = "cos2",
 show(pca)
 #save the PCA
 ggsave(path = "Figures", paste0(Sys.Date(), '_PCA.svg'), width = 14, height = 10, pca)
+
+
+####PCA with drivers overlaid as per Ashley's suggestion ----
+
+comm_data <- all_data[,(51:436)]
+# Remove columns that are entirely zeros (mite 25, mite69)
+comm_data <- comm_data[, colSums(comm_data != 0) > 0]
+
+
+#remove morphospecies count data
+d <- all_data[, -(51:436)]
+#the soil paratmers that were stat. sig. different (22,23 = zn, mn but missing some rows)
+env_data <- d[, c(12, 13, 15, 16, 17, 18, 52, 53)]
+#remove the rows containing NA
+
+
+
+#assign the treatments to relevant rows of the dataframe
+treatment <- c(rep("Grassland Bracken Present",5),rep("Grassland Bracken Absent",5), rep("Heathland Bracken Present",5),rep("Heathland Bracken Absent",5), rep("Woodland Bracken Present", 5), rep("Woodland Bracken Absent", 5))
+
+
+
+# Load libraries
+library(vegan)
+library(ggplot2)
+library(ggpubr)
+library(dplyr)
+library(ggrepel)
+library(scales)
+library(boot)
+
+# ----- STEP 1: Standardize environmental data (PCA based on correlation matrix) -----
+# Make sure all columns in env_data are numeric
+env_data_scaled <- scale(env_data)
+
+# Perform PCA using correlation matrix
+pca_res <- rda(env_data_scaled)  # vegan::rda is equivalent to PCA when no response variable is given
+
+# Extract site scores (sample positions in PCA space)
+site_scores <- scores(pca_res, display = "sites", choices = 1:2)
+site_scores_df <- as.data.frame(site_scores)
+site_scores_df$Station <- rownames(site_scores_df)  # Add sample IDs
+
+# Add station grouping to enable convex hulls
+site_scores_df$Group <- as.factor(treatment)  # or replace with appropriate grouping var
+
+# ----- STEP 2: Fit environmental vectors using envfit (bootstrap N = 999) -----
+fit_env <- envfit(pca_res, env_data_scaled, permutations = 999)
+env_vectors <- scores(fit_env, display = "vectors")
+env_vectors_df <- as.data.frame(env_vectors)
+env_vectors_df$Variable <- rownames(env_vectors_df)
+
+# ----- STEP 3: Calculate convex hulls for each group (station) -----
+find_hull <- function(df) df[chull(df$PC1, df$PC2), ]
+colnames(site_scores_df)[1:2] <- c("PC1", "PC2")
+
+hull_df <- site_scores_df %>% group_by(Group) %>% do(find_hull(.))
+
+# ----- STEP 4: Extract eigenvalues for axis variance explained -----
+eig_vals <- summary(pca_res)$cont$importance
+expl_var_PC1 <- round(eig_vals[2, 1] * 100, 1)
+expl_var_PC2 <- round(eig_vals[2, 2] * 100, 1)
+
+
+# Function to generate bootstrapped ellipses for a group
+get_ellipse <- function(df, n_boot = 999, conf = 0.95) {
+  boot_coords <- replicate(n_boot, {
+    sample_df <- df[sample(nrow(df), replace = TRUE), ]
+    colMeans(sample_df[, c("PC1", "PC2")])
+  })
+  
+  boot_df <- as.data.frame(t(boot_coords))
+  robust_cov <- MASS::cov.trob(boot_df)  # Get robust covariance
+  ell <- ellipse::ellipse(robust_cov$cov, centre = robust_cov$center, level = conf)
+  ell_df <- as.data.frame(ell)
+  colnames(ell_df) <- c("x", "y")  # <-- FIX
+  return(ell_df)
+}
+
+
+library(ellipse)
+
+ellipse_list <- lapply(split(site_scores_df, site_scores_df$Group), function(group_df) {
+  ellipse_df <- get_ellipse(group_df, n_boot = 999, conf = 0.95)
+  ellipse_df$Group <- unique(group_df$Group)
+  return(ellipse_df)
+})
+boot_ellipses_df <- do.call(rbind, ellipse_list)
+
+custom_colors<- c(
+  "Grassland Bracken Present" = "#999999",
+  "Grassland Bracken Absent" = "#E69F00",
+  "Heathland Bracken Present" = "#56B4E9",
+  "Heathland Bracken Absent" = "#009E73",
+  "Woodland Bracken Present" = "#CC79A7",
+  "Woodland Bracken Absent" = "#0072B2"
+)
+
+
+ggplot(site_scores_df, aes(x = PC1, y = PC2, color = Group, fill = Group)) +
+  geom_point(size = 2, alpha = 1) +
+  geom_polygon(data = boot_ellipses_df, aes(x = x, y = y, fill = Group), alpha = 0.4, color = NA) +  # filled ellipse
+  geom_path(data = boot_ellipses_df, aes(x = x, y = y, color = Group), linetype = "dashed") +      # ellipse border
+  geom_segment(data = env_vectors_df,
+               aes(x = 0, y = 0, xend = PC1, yend = PC2),
+               arrow = arrow(length = unit(0.25, "cm")),
+               color = "blue", inherit.aes = FALSE) +
+  geom_text_repel(data = env_vectors_df,
+                  aes(x = PC1, y = PC2, label = Variable),
+                  color = "blue", size = 4, inherit.aes = FALSE) +
+  scale_color_manual(values = custom_colors) +
+  scale_fill_manual(values = custom_colors) +
+  labs(x = paste0("PC1 (", expl_var_PC1, "%)"),
+       y = paste0("PC2 (", expl_var_PC2, "%)")) +
+  theme_minimal() +
+  theme(legend.position = "right")
+
+
+
