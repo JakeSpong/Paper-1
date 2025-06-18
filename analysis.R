@@ -2841,185 +2841,90 @@ individual_model <- lmer(Individuals ~ `Water content (% of wet soil mass)` * We
 summary(individual_model)
 
 
-#### run PCA, to see what is driving mesofauna diversity ----
+#### dbRDA to overlay significant environmental drivers onto community composition ----
 
-#generate dataframe ew shall run PCA on.  Ensure veg and morphotype alpha diversity indices, and mesofaua abundances
-#have been computed and added to the dataframe using the relevant tabs
+#define the community data frame
+#order samples by ID alphabetically
+d <- all_data
+d <- as.data.frame(d)
+#remove all empty rows
+d <- d[1:30,]
+#replace row index with sample names
+rownames(d) <- d[,1]
+#the community data frame
+cdf <- d[,(51:436)]
+#replace null (empty excell cell) with "0"
+cdf[is.na(cdf)] <- 0
+cdf <- as.matrix(spe)
 
-library('FactoMineR') #includes functions needed to vizualize outputs of the PCA
-
-#remove morphospecies count data
-d <- all_data[, -(51:436)]
-#remove non-numerical data
-numerical_d <- d[, 12:27]
-numerical_d <- cbind(numerical_d, d[, 49:50])
-#remove non-numerical data
-numerical_d <- na.omit(numerical_d)
-
-# Remove columns that are entirely zeros
-numerical_d <- numerical_d[, colSums(numerical_d != 0) > 0]
-
-#normalize the data
-data_normalized <- scale(numerical_d)
-#compute the PCA
-pca_result <- prcomp(data_normalized)
-# View the results
-summary(pca_result)  # Summary of the PCA (explained variance, etc.)
-
-# Principal components
-pca_result$x  # The scores (the projections of the original data onto the PCs)
-
-# The loadings (eigenvectors).
-pca_result$rotation  # The loadings (coefficients of the principal components)
-
-# Variance explained by each principal component
-pca_result$sdev^2 / sum(pca_result$sdev^2)  # Proportion of variance explained
-
-
-#needed for fviz_eig() function
-library(factoextra)
-#generate scree plot using fviz_eig() function.  This shows the eigenvalues from highest to lowest, i.e. from the components which explain the most variance to the components which explain the least
-scree <- fviz_eig(pca_result, addlabels = TRUE)
-show(scree)
-
-# Plotting the PCA results (optional)
-# First PC vs. Second PC
-plot(pca_result$x[, 1], pca_result$x[,2], 
-     xlab = "PC1", ylab = "PC2", 
-     main = "PCA - PC1 vs PC2")
-
-
-# Biplot to visualize the PCA results.  We are vizualising the similarities and differences between samples, and shows the impact of each attribute on each of the principal components.  Variables that are grouped together are positively correlated with one another.  The further the distance between the variable and the origin, the better represented the variaible is.  Variables that are negatively correlated are displayed to the opposite side of the biplot's origin.
-dev.new()
-biplot(pca_result)
-
-#now determine the variable's contribution to principal components.  This representation is called the Cos2, and corresponds to the square cosine.  A low value means the variable is not perfectly represented by that component, whilst a high value means a good representation of the variable on that component.
-fviz_cos2(pca_result, choice = "var", axes = 1:2)
-
-dev.new()
-#combine biplot and attribute importance.  Attributes with similar cos2 scores will have similar colours.
-pca <- fviz_pca_var(pca_result, col.var = "cos2", 
-             gradient.cols = c("black", "orange", "green"),
-             repel = TRUE)
-show(pca)
-#save the PCA
-ggsave(path = "Figures", paste0(Sys.Date(), '_PCA.svg'), width = 14, height = 10, pca)
-
-
-####PCA with drivers overlaid as per Ashley's suggestion ----
-
-comm_data <- all_data[,(51:436)]
-# Remove columns that are entirely zeros (mite 25, mite69)
-comm_data <- comm_data[, colSums(comm_data != 0) > 0]
-
-
-#remove morphospecies count data
-d <- all_data[, -(51:436)]
-#the soil paratmers that were stat. sig. different (22,23 = zn, mn but missing some rows)
-env_data <- d[, c(12, 13, 15, 16, 17, 18, 52, 53)]
-#remove the rows containing NA
-
-
-
+#explanatory data frame: paramters that differed significantly.  THese have different base units so we may want to standardize them e.g. by z scoring
+edf <- d[, c(12, 13, 15, 16, 17, 18, 22, 23, 438, 439)]
 #assign the treatments to relevant rows of the dataframe
-treatment <- c(rep("Grassland Bracken Present",5),rep("Grassland Bracken Absent",5), rep("Heathland Bracken Present",5),rep("Heathland Bracken Absent",5), rep("Woodland Bracken Present", 5), rep("Woodland Bracken Absent", 5))
+edf$treatment <- c(rep("Grassland Bracken Present",5),rep("Grassland Bracken Absent",5), rep("Heathland Bracken Present",5),rep("Heathland Bracken Absent",5), rep("Woodland Bracken Present", 5), rep("Woodland Bracken Absent", 5))
+
+#save the results of the dbRDA to a variable, looking at sample location effects only (longitude, latitude, elevation) - account for 18% of the variance in the microivert communities - but not the other 82%!
+dbrda_summary <- dbrda(formula = cdf ~ `Water content (% of wet soil mass)` + `Total Carbon (g kg-1)` + `CN ratio` + pH + `DOC Concentration (mg C g-1)` + `TNb Concentration (mg N g-1)` + `Zn (mg g-1)` + `Mn (mg g-1)` + `Vegetation Shannon` + `Vegetation Simpson`, edf, distance = "euclidean", sqrt.dist = FALSE, add = FALSE, dfun = vegdist, metaMDSdist = FALSE, na.action = na.exclude, subset = NULL)
+
+summary(dbrda_summary)
 
 
+# Define treatment variable and convert to factor
+#treatment <- as.factor(edf$treatment)
 
-# Load libraries
-library(vegan)
-library(ggplot2)
-library(ggpubr)
-library(dplyr)
-library(ggrepel)
-library(scales)
-library(boot)
-
-# ----- STEP 1: Standardize environmental data (PCA based on correlation matrix) -----
-# Make sure all columns in env_data are numeric
-env_data_scaled <- scale(env_data)
-
-# Perform PCA using correlation matrix
-pca_res <- rda(env_data_scaled)  # vegan::rda is equivalent to PCA when no response variable is given
-
-# Extract site scores (sample positions in PCA space)
-site_scores <- scores(pca_res, display = "sites", choices = 1:2)
-site_scores_df <- as.data.frame(site_scores)
-site_scores_df$Station <- rownames(site_scores_df)  # Add sample IDs
-
-# Add station grouping to enable convex hulls
-site_scores_df$Group <- as.factor(treatment)  # or replace with appropriate grouping var
-
-# ----- STEP 2: Fit environmental vectors using envfit (bootstrap N = 999) -----
-fit_env <- envfit(pca_res, env_data_scaled, permutations = 999)
-env_vectors <- scores(fit_env, display = "vectors")
-env_vectors_df <- as.data.frame(env_vectors)
-env_vectors_df$Variable <- rownames(env_vectors_df)
-
-# ----- STEP 3: Calculate convex hulls for each group (station) -----
-find_hull <- function(df) df[chull(df$PC1, df$PC2), ]
-colnames(site_scores_df)[1:2] <- c("PC1", "PC2")
-
-hull_df <- site_scores_df %>% group_by(Group) %>% do(find_hull(.))
-
-# ----- STEP 4: Extract eigenvalues for axis variance explained -----
-eig_vals <- summary(pca_res)$cont$importance
-expl_var_PC1 <- round(eig_vals[2, 1] * 100, 1)
-expl_var_PC2 <- round(eig_vals[2, 2] * 100, 1)
+treatment <- factor(edf$treatment, levels = unique(edf$treatment))
+# Define custom colors and point shapes (pch) for the 6 treatments
+treatment_levels <- levels(treatment)
+#colours for each treatment
+colors =c("#999999", "#E69F00", "#56B4E9", "#009E73", "#CC79A7", "#0072B2")[seq_along(treatment_levels)]
+#shapes for point codes
+pchs<- c(15, 0, 16, 1, 17,2)[seq_along(treatment_levels)]
 
 
-# Function to generate bootstrapped ellipses for a group
-get_ellipse <- function(df, n_boot = 999, conf = 0.95) {
-  boot_coords <- replicate(n_boot, {
-    sample_df <- df[sample(nrow(df), replace = TRUE), ]
-    colMeans(sample_df[, c("PC1", "PC2")])
-  })
-  
-  boot_df <- as.data.frame(t(boot_coords))
-  robust_cov <- MASS::cov.trob(boot_df)  # Get robust covariance
-  ell <- ellipse::ellipse(robust_cov$cov, centre = robust_cov$center, level = conf)
-  ell_df <- as.data.frame(ell)
-  colnames(ell_df) <- c("x", "y")  # <-- FIX
-  return(ell_df)
-}
+# Get variance explained by each axis
+eig_vals <- eigenvals(dbrda_summary)
+var_explained <- eig_vals / sum(eig_vals) * 100
+axis_labels <- paste0("dbRDA", 1:2, " (", round(var_explained[1:2], 1), "%)")
+
+# Set the output PDF file and dimensions (in inches)
+pdf("Figures/18_06_2025_dbRDA_plot.pdf", width = 7, height = 6)
+
+# Base plot: empty dbRDA ordination
+plot(dbrda_summary, type = "n", scaling = 2, , 
+     xlab = axis_labels[1], ylab = axis_labels[2])  # Use scaling = 2 for species-environment biplot
+
+# Add site points, colored by treatment
+for (i in seq_along(treatment_levels)) {
+  sel <- treatment == treatment_levels[i]
+  points(scores(dbrda_summary, display = "sites", scaling = 2)[sel, ], 
+         col = colors[i], pch = pchs[i], cex = 1.2)
+} 
+# --- Add ellipses around treatment groups ---
+ordiellipse(dbrda_summary, groups = treatment, display = "sites", kind = "se", conf = 0.95, draw = "polygon", col = colors, border = colors,lwd = 1.5,lty = 1, alpha = 60)  # transparency (0–255); needs vegan >= 2.6-4
 
 
-library(ellipse)
+# Add legend
+legend("bottomright", legend = treatment_levels, 
+       col = colors, pch = pchs)
 
-ellipse_list <- lapply(split(site_scores_df, site_scores_df$Group), function(group_df) {
-  ellipse_df <- get_ellipse(group_df, n_boot = 999, conf = 0.95)
-  ellipse_df$Group <- unique(group_df$Group)
-  return(ellipse_df)
+# Extract biplot scores of environmental variables
+env_vectors <- scores(dbrda_summary, display = "bp", scaling = 2)
+# Scale factor to adjust vector length visually
+vec_multiplier <- ordiArrowMul(env_vectors)  # automatic scaling
+# Add arrows
+apply(env_vectors, 1, function(row) {
+  arrows(0, 0, row[1] * vec_multiplier, row[2] * vec_multiplier, 
+         length = 0.1, col = "black")
 })
-boot_ellipses_df <- do.call(rbind, ellipse_list)
+# Add vector labels
+text(env_vectors * vec_multiplier, labels = rownames(env_vectors), 
+     col = "black", pos = 4, cex = 0.8)
 
-custom_colors<- c(
-  "Grassland Bracken Present" = "#999999",
-  "Grassland Bracken Absent" = "#E69F00",
-  "Heathland Bracken Present" = "#56B4E9",
-  "Heathland Bracken Absent" = "#009E73",
-  "Woodland Bracken Present" = "#CC79A7",
-  "Woodland Bracken Absent" = "#0072B2"
-)
+dev.off()
 
-
-ggplot(site_scores_df, aes(x = PC1, y = PC2, color = Group, fill = Group)) +
-  geom_point(size = 2, alpha = 1) +
-  geom_polygon(data = boot_ellipses_df, aes(x = x, y = y, fill = Group), alpha = 0.4, color = NA) +  # filled ellipse
-  geom_path(data = boot_ellipses_df, aes(x = x, y = y, color = Group), linetype = "dashed") +      # ellipse border
-  geom_segment(data = env_vectors_df,
-               aes(x = 0, y = 0, xend = PC1, yend = PC2),
-               arrow = arrow(length = unit(0.25, "cm")),
-               color = "blue", inherit.aes = FALSE) +
-  geom_text_repel(data = env_vectors_df,
-                  aes(x = PC1, y = PC2, label = Variable),
-                  color = "blue", size = 4, inherit.aes = FALSE) +
-  scale_color_manual(values = custom_colors) +
-  scale_fill_manual(values = custom_colors) +
-  labs(x = paste0("PC1 (", expl_var_PC1, "%)"),
-       y = paste0("PC2 (", expl_var_PC2, "%)")) +
-  theme_minimal() +
-  theme(legend.position = "right")
-
-
+#is the model significant?
+anova(dbrda_summary)
+#test axes for significance
+anova(dbrda_summary, by = "axis", perm.max = 500)
+#test environmental variables for significance
+anova(dbrda_summary, by = "terms", perm.max = 200)
 
