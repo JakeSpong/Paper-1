@@ -2926,5 +2926,290 @@ anova(dbrda_summary)
 #test axes for significance
 anova(dbrda_summary, by = "axis", perm.max = 500)
 #test environmental variables for significance
-anova(dbrda_summary, by = "terms", perm.max = 200)
+anova(dbrda_summary, by = "terms", perm.max = 500)
+
+
+#### redo PCA and RDA as per project 2 analysis ----
+
+d <- as.data.frame(readr::read_csv(
+  here::here("Data",  "2025-10-30_master-data-frame.csv"), show_col_types = FALSE
+)) 
+
+#make sure our variables are coded as factors
+d$Habitat <- factor(d$Habitat, levels = c("Grassland", "Heathland", "Woodland"), labels = c("Grassland", "Heathland", "Woodland"))
+#make sure our variables are coded as factors
+d$Bracken <- factor(d$Bracken, levels = c("Present", "Absent"), labels = c("Present", "Absent"))
+
+
+#convert the sample date to an appropriate format
+d$`Date` <- as.Date(d$`Date`, format = "%d/%m/%Y")
+#convert to Julian date for linear temporal trends
+d$julian <- scale(as.numeric(d$`Date`))
+
+#replace row index with sample names
+rownames(d) <- d[,1]
+
+#or omit rows with NA
+d <- na.omit(d)
+
+#the community data frame for just mesofauna (mites, springtails morphotypes) raw abundances
+cdf <- d[,(58:409)]
+
+#replace null (empty excell cell) with "0"
+#cdf[is.na(cdf)] <- 0
+cdf <- as.matrix(cdf)
+
+#explanatory data frame: paramters that differed significantly.  THese have different base units so we may want to standardize them e.g. by z scoring
+#latitude, longitude, elevation, TNb, total C, total N, C:N ratio, alpha, SUVA.  Add WEOC, WEN to dataframe too, and date
+edf <- d[, c(6, 7, 8, 11, 12, 13, 14, 15,16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 49, 50, 51, 52, 53)]
+
+#PCA of edf to see if any explanatory factors are highly correlated
+correlation_check <- cor(edf)
+cor(edf)
+# Step 2: Remove columns with all NA
+env_data_clean <- edf[, colSums(!is.na(edf)) > 0]
+
+# Step 3: Remove columns with zero or near-zero variance
+# Use a small threshold to catch nearly constant columns
+# env_data_clean <- env_data_clean[, apply(env_data_clean, 2, function(x) {
+#   x <- x[is.finite(x)]  # remove Infs
+#   if (length(x) == 0) return(FALSE)
+#   sd_val <- sd(x, na.rm = TRUE)
+#   return(!is.na(sd_val) && sd_val > 1e-8)
+# })]
+
+# Step 4: Drop rows with any NA (PCA can't handle them)
+#env_data_clean <- na.omit(env_data_clean)
+
+# Step 5: Scale and run PCA
+scaled_env_data <- scale(env_data_clean)
+pca_result <- prcomp(scaled_env_data, center = TRUE, scale. = TRUE)
+
+# Step 6: View results
+summary(pca_result)
+
+#sample_ids <- d$`Sample ID`[as.numeric(rownames(env_data_clean))]
+
+pca_scores <- as.data.frame(pca_result$x)
+pca_scores$SampleID <- d$`Sample ID`
+pca_scores$Bracken <- d$Bracken
+pca_scores$Habitat <- d$Habitat
+
+#plot the loadings
+# Extract loadings for PC1 and PC2
+loadings <- as.data.frame(pca_result$rotation[, 1:2])
+loadings$Variable <- rownames(loadings)
+
+# Plot loadings as arrows from origin
+ggplot(loadings, aes(x = PC1, y = PC2, label = Variable)) +
+  geom_segment(aes(x = 0, y = 0, xend = PC1, yend = PC2),
+               arrow = arrow(length = unit(0.3, "cm")), color = "blue") +
+  geom_text(hjust = 0.5, vjust = -0.7, size = 4) +
+  xlim(c(min(loadings$PC1, 0) * 1.1, max(loadings$PC1, 0) * 1.1)) +
+  ylim(c(min(loadings$PC2, 0) * 1.1, max(loadings$PC2, 0) * 1.1)) +
+  labs(title = "PCA Loadings Plot (PC1 & PC2)", x = "PC1", y = "PC2") +
+  theme_minimal()
+
+
+#visualize the biplot
+# Extract PCA scores and add SampleID if you have it
+#pca_scores <- as.data.frame(pca_result$x[, 1:2])
+#if (exists("sample_ids")) pca_scores$SampleID <- sample_ids
+
+# Scale loadings for plotting (to match score scale roughly)
+loadings_scaled <- loadings
+scale_factor <- min(
+  (max(pca_scores$PC2) - min(pca_scores$PC2)) / (max(loadings$PC2) - min(loadings$PC2)),
+  (max(pca_scores$PC1) - min(pca_scores$PC1)) / (max(loadings$PC1) - min(loadings$PC1))
+)
+loadings_scaled$PC1 <- loadings$PC1 * scale_factor * 0.7
+loadings_scaled$PC2 <- loadings$PC2 * scale_factor * 0.7
+
+pca_scores$Bracken <- factor(pca_scores$Bracken)
+#add variance explained by each PC
+# Calculate proportion of variance explained
+pca_var <- pca_result$sdev^2
+pca_var_explained <- round(100 * pca_var / sum(pca_var), 1)  # in %
+#number habitat so we can easily tell which are from which
+id_map <- c("Grassland" = "G", "Heathland" = "H", "Woodland" = "W")
+#pca_scores$Habitat <- d$Habitat
+pca_scores$Habitat <- id_map[pca_scores$Habitat]
+
+
+
+# Plot
+ggplot() +
+  geom_point(data = pca_scores, aes(x = PC1, y = PC2, color = Bracken), size = 3) +
+  geom_text(data = pca_scores, aes(x = PC1, y = PC2, label = Habitat), vjust = -1) +
+  geom_segment(data = loadings_scaled, aes(x = 0, y = 0, xend = PC1, yend = PC2),
+               arrow = arrow(length = unit(0.3, "cm")), color = "red") +
+  geom_text(data = loadings_scaled, aes(x = PC1, y = PC2, label = Variable),
+            color = "black", hjust = 0.5, vjust = -0.7) +
+  labs(x = paste0("PC1 (", pca_var_explained[1], "%)"),
+       y = paste0("PC2 (", pca_var_explained[2], "%)"),
+       color = "Bracken"
+  ) + scale_color_manual(values = c("Present" = "forestgreen", "Absent" = "grey")) +
+  theme_minimal()
+
+
+#assign the treatments to relevant rows of the dataframe
+edf$treatment <- c(rep("Grassland - Present",4),rep("Grassland - Absent",4), rep("Heathland - Present",3),rep("Heathland - Absent",4), rep("Woodland - Present", 4), rep("Woodland - Absent", 4))
+
+#check factors for correlation e.g. are elevation and LongitudeE correlated? seems likely!
+scaled_env_data <- as.data.frame(scaled_env_data)
+
+#dbRDA using normaliesd environmental factors
+dbrda_summary <- dbrda(formula = cdf ~ `pH`  + `Water content (% of wet soil mass)` + `Total Carbon (g kg-1)` + `C:N ratio` + `DOC Concentration (mg C g-1)` + `TNb Concentration (mg N g-1)` + `Zn (mg g-1)` + `Mn (mg g-1)` + `Vegetation Shannon`, scaled_env_data, distance = "euclidean", sqrt.dist = FALSE, add = FALSE, dfun = vegdist, metaMDSdist = FALSE, na.action = na.exclude, subset = NULL)
+
+
+summary(dbrda_summary)
+
+# Define treatment variable and convert to factor
+treatment <- factor(edf$treatment, levels = unique(edf$treatment))
+# Define custom colors and point shapes (pch) for the 6 treatments
+treatment_levels <- levels(treatment)
+#colours for each treatment
+colors =c("darkgreen", "darkgreen", "purple", "purple", "brown", "brown")[seq_along(treatment_levels)]
+#shapes for point codes
+pchs<- c(15, 0, 16, 1, 17,2)[seq_along(treatment_levels)]
+
+
+# Get variance explained by each axis
+eig_vals <- eigenvals(dbrda_summary)
+var_explained <- eig_vals / sum(eig_vals) * 100
+axis_labels <- paste0("dbRDA", 1:2, " (", round(var_explained[1:2], 1), "%)")
+
+# Set the output PDF file and dimensions (in inches)
+#pdf("Figures/30_10_2025_dbRDA_plot.pdf", width = 7, height = 7)
+dev.new()
+# Base plot: empty dbRDA ordination
+plot(dbrda_summary, type = "n", scaling = 2, , 
+     xlab = axis_labels[1], ylab = axis_labels[2])  # Use scaling = 2 for species-environment biplot
+
+# Add site points, colored by treatment
+for (i in seq_along(treatment_levels)) {
+  sel <- treatment == treatment_levels[i]
+  points(scores(dbrda_summary, display = "sites", scaling = 2)[sel, ], 
+         col = colors[i], pch = pchs[i], cex = 1.2)
+} 
+# --- Add ellipses around treatment groups ---
+ordiellipse(dbrda_summary, groups = treatment, display = "sites", kind = "se", conf = 0.95, draw = "polygon", col = colors, border = colors,lwd = 1.5,lty = 1, alpha = 60)  # transparency (0–255); needs vegan >= 2.6-4
+
+
+# Add legend
+legend("topright", legend = treatment_levels, 
+       col = colors, pch = pchs)
+
+# Extract biplot scores of environmental variables
+env_vectors <- scores(dbrda_summary, display = "bp", scaling = 2)
+# Scale factor to adjust vector length visually
+vec_multiplier <- ordiArrowMul(env_vectors)  # automatic scaling
+# Add arrows
+apply(env_vectors, 1, function(row) {
+  arrows(0, 0, row[1] * vec_multiplier, row[2] * vec_multiplier, 
+         length = 0.1, col = "black")
+})
+# Add vector labels
+text(env_vectors * vec_multiplier, labels = rownames(env_vectors), 
+     col = "black", pos = 4, cex = 0.8)
+
+dev.off()
+
+#is the model significant?
+anova(dbrda_summary)
+#test axes for significance
+anova(dbrda_summary, by = "axis", perm.max = 500)
+#test environmental variables for significance
+anova(dbrda_summary, by = "terms", perm.max = 500)
+
+
+
+## dbRDA with just habitat
+
+
+#we will have different colours for bracken present/absent
+treatment <- factor(d$Bracken, levels = unique(d$Bracken))
+# Define custom colors and point shapes (pch) for the 6 treatments
+treatment_levels <- levels(treatment)
+#colours for each treatment
+colors = c("#117733", "grey")
+#and different symbols for each habitat
+habitat <- factor(d$Habitat, levels = c("Grassland", "Heathland", "Woodland"))
+# Habitat: different symbols
+pch_map <- c("Present" = 15, "Absent" = 16)
+pchs <- pch_map[as.character(treatment)]
+
+#shapes for point codes
+#pchs<- c(15, 0, 16, 1, 17,2, 18, 3, 19, 4, 20, 5)[seq_along(treatment_levels)]
+#pchs<- c(15, 16)[seq_along(treatment_levels)]
+
+
+# Get variance explained by each axis
+eig_vals <- eigenvals(dbrda_summary)
+var_explained <- eig_vals / sum(eig_vals) * 100
+axis_labels <- paste0("dbRDA", 1:2, " (", round(var_explained[1:2], 1), "%)")
+
+
+
+dev.new()
+plot(dbrda_summary, type = "n", scaling = 2,
+     xlab = axis_labels[1], ylab = axis_labels[2])
+
+# --- Add site points ---
+points(scores(dbrda_summary, display = "sites", scaling = 2),
+       col = colors, pch = pchs, cex = 1.2)
+
+# --- Add ellipses per Bracken treatment ---
+ordiellipse(dbrda_summary, groups = habitat, display = "sites", kind = "se",
+            conf = 0.95, draw = "polygon", col = c("limegreen", "purple", "brown"),
+            border = c("limegreen", "purple", "brown"), lwd = 1.5, lty = 1, alpha = 60)
+
+# --- Add legends ---
+legend("topright", legend = levels(habitat), title = "Habitat",
+       col = c("limegreen", "purple", "brown"), pch = 16, pt.cex = 1.2, cex = 0.9)
+
+legend("bottomright", legend = levels(treatment), title = "Bracken",
+       pch = unname(pch_map), cex = 0.9)
+
+# --- Add environmental variable vectors ---
+env_vectors <- scores(dbrda_summary, display = "bp", scaling = 2)
+vec_multiplier <- ordiArrowMul(env_vectors)
+
+apply(env_vectors, 1, function(row) {
+  arrows(0, 0, row[1] * vec_multiplier, row[2] * vec_multiplier,
+         length = 0.1, col = "black")
+})
+text(env_vectors * vec_multiplier, labels = rownames(env_vectors),
+     col = "black", pos = 4, cex = 0.8)
+
+dev.off()
+
+summary(dbrda_summary)
+#is the model significant?
+anova(dbrda_summary)
+#test axes for significance
+anova(dbrda_summary, by = "axis", perm.max = 500)
+#test environmental variables for significance
+anova(dbrda_summary, by = "terms", perm.max = 500)
+
+
+
+#replace row index with sample names
+rownames(d) <- d[,1]
+#the community data frame
+cdf <- d[,(51:436)]
+#replace null (empty excell cell) with "0"
+cdf[is.na(cdf)] <- 0
+cdf <- as.matrix(spe)
+
+#explanatory data frame: paramters that differed significantly.  THese have different base units so we may want to standardize them e.g. by z scoring
+edf <- d[, c(12, 13, 15, 16, 17, 18, 22, 23, 438, 439)]
+#assign the treatments to relevant rows of the dataframe
+edf$treatment <- c(rep("Grassland Bracken Present",5),rep("Grassland Bracken Absent",5), rep("Heathland Bracken Present",5),rep("Heathland Bracken Absent",5), rep("Woodland Bracken Present", 5), rep("Woodland Bracken Absent", 5))
+
+#save the results of the dbRDA to a variable, looking at sample location effects only (longitude, latitude, elevation) - account for 18% of the variance in the microivert communities - but not the other 82%!
+dbrda_summary <- dbrda(formula = cdf ~ `Water content (% of wet soil mass)` + `Total Carbon (g kg-1)` + `CN ratio` + pH + `DOC Concentration (mg C g-1)` + `TNb Concentration (mg N g-1)` + `Zn (mg g-1)` + `Mn (mg g-1)` + `Vegetation Shannon` + `Vegetation Simpson`, edf, distance = "euclidean", sqrt.dist = FALSE, add = FALSE, dfun = vegdist, metaMDSdist = FALSE, na.action = na.exclude, subset = NULL)
+
+summary(dbrda_summary)
+
 
